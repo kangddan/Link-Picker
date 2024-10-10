@@ -70,7 +70,7 @@ class PickerView(QtWidgets.QWidget):
         self.buttonsParentPos = QtCore.QPointF()
         self.clickedPos       = QtCore.QPointF()
 
-        self.buttonGlobalPos = QtCore.QPointF() # set button global pos by menu
+        self.buttonGlobalPos  = QtCore.QPointF() # set button global pos by menu
         # -------------------------------------
         '''
         This variable might cause confusion.
@@ -79,7 +79,7 @@ class PickerView(QtWidgets.QWidget):
         performing a second check on the buttons. 
         If a button is inside or intersects with the box, it will be deselected
         '''
-        self.cleatMoveTag     = False
+        self.clearMoveTag     = False
         
         self.selected         = False
         self.startPos         = QtCore.QPoint() # selectionBox start pos
@@ -89,6 +89,9 @@ class PickerView(QtWidgets.QWidget):
         self.pickerButtons   = []
         self.selectedButtons = []
         self.shiftAddButtons = []
+        # --------------------------------------
+        self.buttonsMoveTag = False
+        self.buttonsTranslateOffset = {}
         
     def _createMenu(self):
         self.pickerViewMenu       = QtWidgets.QMenu(self)
@@ -107,6 +110,7 @@ class PickerView(QtWidgets.QWidget):
         self.pickerViewMenu.addSeparator()
         self.pickerViewMenu.addAction(self.resetViewAction)
         self.pickerViewMenu.addAction(self.frameViewAction)
+        
         
     def _createWidgets(self):
         self.parentAxis = AxisWidget(self)
@@ -221,8 +225,28 @@ class PickerView(QtWidgets.QWidget):
             else: 
                 if not (event.modifiers() & (QtCore.Qt.ShiftModifier | QtCore.Qt.AltModifier)):
                     self._clearSelectedButtons()
-            return
+            return  
             
+        # move buttons
+        if event.modifiers() == QtCore.Qt.ControlModifier and event.buttons() == QtCore.Qt.MouseButton.LeftButton:
+            self.buttonsMoveTag = True
+            localPos = event.pos()
+
+            oneButton = next((but for but in self._getPickerButtons() if but.geometry().contains(localPos)), None)
+            
+            if oneButton is not None and oneButton not in self.selectedButtons:
+                self._clearSelectedButtons()
+                self.selectedButtons = [oneButton]
+                oneButton.setSelected(True)
+                self.buttonsTranslateOffset[oneButton] = oneButton.pos() - localPos
+                
+            elif self.selectedButtons and any(but.geometry().contains(localPos) for but in self.selectedButtons):
+                for button in self.selectedButtons:
+                    self.buttonsTranslateOffset[button] = button.pos() - localPos
+            else:
+                self._clearSelectedButtons()
+            return 
+        
         super().mousePressEvent(event)
         
         
@@ -262,7 +286,7 @@ class PickerView(QtWidgets.QWidget):
         # selected buttons and updare Selection Box    
         if self.selected:
             self.endPos  = event.pos()
-            self.cleatMoveTag = True # clear tag
+            self.clearMoveTag = True # clear tag
             self.selectionBox.setGeometry(QtCore.QRect(self.startPos, self.endPos).normalized()) # update selectionBox
             self.selectionBoxRect = QtCore.QRect(self.startPos, self.endPos)
             
@@ -288,11 +312,18 @@ class PickerView(QtWidgets.QWidget):
                         if button in self.selectedButtons:
                             self.selectedButtons.remove(button)
             return
-              
+            
+        # move buttons
+        if self.buttonsMoveTag:
+            for button, offset in self.buttonsTranslateOffset.items():
+                globalPos = event.pos() + offset
+                button.move(globalPos)
+                button.updateLocalPos(QtCore.QPointF(globalPos), self.buttonsParentPos, self.sceneScale)
+            return 
+        
         super().mouseMoveEvent(event)
             
-            
-    
+
     def mouseReleaseEvent(self, event):
         
         # move view
@@ -319,7 +350,7 @@ class PickerView(QtWidgets.QWidget):
                     if self.clickedButton in self.selectedButtons:
                         self.selectedButtons.remove(self.clickedButton)
                       
-            if self.cleatMoveTag:
+            if self.clearMoveTag:
                 '''
                 Perform a second check. If the button is inside or intersects with the box, it will be deselected!!
                 '''  
@@ -328,7 +359,12 @@ class PickerView(QtWidgets.QWidget):
                         if self.selectionBoxRect.intersects(button.geometry()) and button in self.selectedButtons:
                             button.setSelected(False)
                             self.selectedButtons.remove(button)
-                self.cleatMoveTag = False
+                self.clearMoveTag = False
+                
+        # move buttons        
+        if self.buttonsMoveTag:
+            self.buttonsTranslateOffset.clear()
+            self.buttonsMoveTag = False
 
         self.setCursor(QtCore.Qt.ArrowCursor)
         super().mouseReleaseEvent(event)
