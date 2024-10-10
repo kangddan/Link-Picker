@@ -230,19 +230,21 @@ class PickerView(QtWidgets.QWidget):
         # move buttons
         if event.modifiers() == QtCore.Qt.ControlModifier and event.buttons() == QtCore.Qt.MouseButton.LeftButton:
             self.buttonsMoveTag = True
-            localPos = event.pos()
+            localPos = event.localPos()
 
-            oneButton = next((but for but in self._getPickerButtons() if but.geometry().contains(localPos)), None)
+            oneButton = next((but for but in self._getPickerButtons() if but.geometry().contains(localPos.toPoint())), None)
             
             if oneButton is not None and oneButton not in self.selectedButtons:
                 self._clearSelectedButtons()
                 self.selectedButtons = [oneButton]
                 oneButton.setSelected(True)
-                self.buttonsTranslateOffset[oneButton] = oneButton.pos() - localPos
+                globalPos = PickerView.localToGlobal(oneButton.localPos, self.buttonsParentPos, self.sceneScale)
+                self.buttonsTranslateOffset[oneButton] = globalPos - localPos
                 
-            elif self.selectedButtons and any(but.geometry().contains(localPos) for but in self.selectedButtons):
+            elif self.selectedButtons and any(but.geometry().contains(localPos.toPoint()) for but in self.selectedButtons):
                 for button in self.selectedButtons:
-                    self.buttonsTranslateOffset[button] = button.pos() - localPos
+                    globalPos = PickerView.localToGlobal(button.localPos, self.buttonsParentPos, self.sceneScale)
+                    self.buttonsTranslateOffset[button] = globalPos - localPos
             else:
                 self._clearSelectedButtons()
             return 
@@ -316,9 +318,9 @@ class PickerView(QtWidgets.QWidget):
         # move buttons
         if self.buttonsMoveTag:
             for button, offset in self.buttonsTranslateOffset.items():
-                globalPos = event.pos() + offset
-                button.move(globalPos)
-                button.updateLocalPos(QtCore.QPointF(globalPos), self.buttonsParentPos, self.sceneScale)
+                globalPos = event.localPos() + offset
+                button.move(globalPos.toPoint())
+                button.updateLocalPos(globalPos, self.buttonsParentPos, self.sceneScale)
             return 
         
         super().mouseMoveEvent(event)
@@ -378,5 +380,3 @@ if __name__ =='__main__':
     layout = QtWidgets.QVBoxLayout(UI)
     layout.addWidget(PickerView())
     UI.show()
-    
-    
