@@ -9,6 +9,7 @@ from PySide2 import QtWidgets
 from PySide2 import QtCore
 from PySide2 import QtGui
 
+
 class _IndexColorPicker(QtWidgets.QDialog):
     mayaIndexColor      = QtCore.Signal(int)
     mayaIndextoRGBColor = QtCore.Signal(list)
@@ -136,10 +137,10 @@ class _GetCmdsRGBColorPicker(QtCore.QObject):
         self.colorSliderObject = omui.MQtUtil.findControl(cmds.colorSliderGrp())
         
         if self.colorSliderObject is not None:
-            self.colorSliderWidget = wrapInstance(int(self.colorSliderObject), QtWidgets.QWidget) # to qt object
+            self.colorSliderWidget = wrapInstance(int(self.colorSliderObject), QtWidgets.QWidget) 
             self.colorSliderWidget.hide()
-            self.parenLayout.addWidget(self.colorSliderWidget)                                    # update Parent
-            self.colorLabel = self.colorSliderWidget.findChild(QtWidgets.QLabel, 'port')          # get MayaColorLabel
+            self.parenLayout.addWidget(self.colorSliderWidget)                                  
+            self.colorLabel = self.colorSliderWidget.findChild(QtWidgets.QLabel, 'port')   
             cmds.colorSliderGrp(self._colorSliderFullPathName(), e=True, cc=partial(self._getColor))
         cmds.deleteUI(window, window=True)
         
@@ -173,16 +174,15 @@ class _GetCmdsRGBColorPicker(QtCore.QObject):
         
 
 class ColorWidget(QtWidgets.QLabel):
-    indexColor   = QtCore.Signal(int)
-    rgbColor     = QtCore.Signal(list)
-    clickedColor = QtCore.Signal()
+    colorSelected = QtCore.Signal(QtGui.QColor)
     
-    def __init__(self, x=100, y=30, parent=None):
+    def __init__(self, x=100, y=30, color=QtGui.QColor(), parent=None):
         super().__init__(parent)
         
         self.setFixedSize(x, y)
-        self._pixmap = QtGui.QPixmap(self.size()) 
-        self._setColor(QtGui.QColor(207, 207, 207))
+        self._pixmap  = QtGui.QPixmap(self.size()) 
+        self.tabColor = color # baseColor
+        self.setColor(self.tabColor)
         
         self.isRGB = True
         
@@ -190,6 +190,7 @@ class ColorWidget(QtWidgets.QLabel):
         self._createMenu()
         self._createWidgets()
         self._createConnections()
+        self.updateCmdsColorLabel(self.tabColor)
 
     
     def _createWidgets(self):
@@ -202,13 +203,10 @@ class ColorWidget(QtWidgets.QLabel):
         self.RGBAction.triggered.connect(lambda: self._setColorMode(True))
         self.indexAction.triggered.connect(lambda: self._setColorMode(False))
         
-        self.cmdsColorUI.mayaRGBToQtColor2.connect(self._setColor)
-        self.indexColorPicker.mayaIndexToQtColor.connect(self._setColor)
+        self.cmdsColorUI.mayaRGBToQtColor2.connect(self.updateColor)
+        self.indexColorPicker.mayaIndexToQtColor.connect(self.updateColor)
         self.indexColorPicker.mayaIndextoRGBColor.connect(self.cmdsColorUI.set) # update cmdsUI color
         
-        # ----------------------------------------------------------------------
-        self.indexColorPicker.mayaIndexColor.connect(lambda index: self.indexColor.emit(index))
-        self.cmdsColorUI.mayaRGBColor.connect(lambda rgb: self.rgbColor.emit(rgb))
     
     
     def _createActions(self):
@@ -231,17 +229,11 @@ class ColorWidget(QtWidgets.QLabel):
         self.colorWidgetMenu.addAction(self.indexAction)
         
         
-    def _setColorMode(self, isRGB):
+    def _setColorMode(self, isRGB: bool):
         self.isRGB = isRGB
-    
-    
-    def _setColor(self, color):
-        self._pixmap.fill(color)
-        self.setPixmap(self._pixmap) 
-        
-        
+     
     def mousePressEvent(self, event):
-        if event.button() == QtCore.Qt.RightButton:
+        if event.buttons() == QtCore.Qt.MouseButton.RightButton and event.modifiers() == QtCore.Qt.NoModifier:
             self.colorWidgetMenu.exec_(event.globalPos())
         else:
             super().mousePressEvent(event)
@@ -249,7 +241,6 @@ class ColorWidget(QtWidgets.QLabel):
         
     def mouseReleaseEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton:
-            self.clickedColor.emit()
             if self.isRGB:
                 # show rgb ColorPicker
                 self._showCmdsRGBColorPicker()
@@ -271,12 +262,30 @@ class ColorWidget(QtWidgets.QLabel):
                                  QtCore.Qt.LeftButton,
                                  QtCore.Qt.NoModifier)
         QtWidgets.QApplication.postEvent(self.cmdsColorUILabel, event)
-    
-    # ----------------------------------------------------------    
-    def getRGBColor(self) -> list:
-        return self.cmdsColorUI.get()
         
-    def getIndexColor(self) -> int:
-        return self.indexColorPicker.index
+    # ---------------------------------------------------------------
+    def updateCmdsColorLabel(self, color):
+        color = [color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0]
+        self.cmdsColorUI.set(color)
+        
+    def getColor(self) -> QtGui.QColor:
+        return self.tabColor
+        
+    def updateColor(self, color: QtGui.QColor):
+        self.setColor(color)
+        self.colorSelected.emit(color)
+        
+        
+    def setColor(self, color: QtGui.QColor):
+        self.tabColor  = color
+        self._pixmap.fill(self.tabColor)
+        self.setPixmap(self._pixmap) 
+        
+if __name__ == '__main__':
+
+    window = ColorWidget()
+    window.show()
+    window.getColor()
+
         
             

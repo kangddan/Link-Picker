@@ -6,17 +6,25 @@ import importlib
 from linkPicker import colorWidget, widgets
 importlib.reload(colorWidget)
 
+
 class ToolBoxWidget(QtWidgets.QWidget):
+    toolboxDataUpdated = QtCore.Signal(list)
+    
+    buttonColorLabelSelected = QtCore.Signal(QtGui.QColor)
+    labelTextColorSelected   = QtCore.Signal(QtGui.QColor)
+    textUpdate               = QtCore.Signal(str)
+    
     def __init__(self, parent=None):
         super().__init__(parent)
         self._createWidgets()
         self._createLayouts()
+        self._createConnections()
         self.updateLayout = True
 
         
     def _createWidgets(self):
         self.colorLabel           = QtWidgets.QLabel('<span style="font-size: 15px; font-weight: 400;">Color</span>')
-        self.buttonColorLabel     = colorWidget.ColorWidget(34, 24)
+        self.buttonColorLabel     = colorWidget.ColorWidget(34, 24, QtGui.QColor(QtCore.Qt.yellow))
         self.widthLabel           = QtWidgets.QLabel('<span style="font-size: 15px; font-weight: 400;">Width</span>')
         self.widthNumberLineEdit  = widgets.NumberLineEdit('int', 40, 1, 8, 400)
 
@@ -24,7 +32,7 @@ class ToolBoxWidget(QtWidgets.QWidget):
         self.heightNumberLineEdit = widgets.NumberLineEdit('int', 40, 1, 8, 400)
 
         self.buttonLabel         = QtWidgets.QLabel('<span style="font-size: 15px; font-weight: 400;">Label</span>')
-        self.labelTextColorLabel = colorWidget.ColorWidget(34, 24)
+        self.labelTextColor      = colorWidget.ColorWidget(34, 24, QtGui.QColor(QtCore.Qt.black))
         self.labelLineEdit       = QtWidgets.QLineEdit()
         self.labelLineEdit.setPlaceholderText('name...')
         
@@ -48,11 +56,16 @@ class ToolBoxWidget(QtWidgets.QWidget):
         self.toolBoxLayout1.addWidget(self.heightNumberLineEdit)
         
         self.toolBoxLayout1.addWidget(self.buttonLabel)
-        self.toolBoxLayout1.addWidget(self.labelTextColorLabel)
+        self.toolBoxLayout1.addWidget(self.labelTextColor)
         self.toolBoxLayout1.addWidget(self.labelLineEdit)
 
         mainLayout.addLayout(self.toolBoxLayout1)
         mainLayout.addLayout(self.toolBoxLayout2)
+        
+    def _createConnections(self):
+        self.buttonColorLabel.colorSelected.connect(self.buttonColorLabelSelected.emit)
+        self.labelTextColor.colorSelected.connect(self.labelTextColorSelected.emit)
+        self.labelLineEdit.editingFinished.connect(lambda: self.textUpdate.emit(self.labelLineEdit.text()))
         
         
     def _moveWidgets(self, fromLayout, toLayout, widgets):
@@ -65,49 +78,39 @@ class ToolBoxWidget(QtWidgets.QWidget):
         width = self.width()
         if width < 450 and self.updateLayout:
             self.updateLayout = False
-            self._moveWidgets(self.toolBoxLayout1, self.toolBoxLayout2, [self.buttonLabel, self.labelTextColorLabel, self.labelLineEdit])
+            self._moveWidgets(self.toolBoxLayout1, self.toolBoxLayout2, [self.buttonLabel, self.labelTextColor, self.labelLineEdit])
 
         elif width > 450 and not self.updateLayout:
             self.updateLayout = True
-            self._moveWidgets(self.toolBoxLayout2, self.toolBoxLayout1, [self.buttonLabel, self.labelTextColorLabel, self.labelLineEdit])
+            self._moveWidgets(self.toolBoxLayout2, self.toolBoxLayout1, [self.buttonLabel, self.labelTextColor, self.labelLineEdit])
 
         super().resizeEvent(event)
         
         
-    # -----------------------------
-    def getButtonColor(self) -> QtGui.QColor:
-        pass
-    
-    def getWidth(self) -> int:
-        return self.widthNumberLineEdit.get()
+    # -----------------------------------------------------
+    def set(self, info: list):
+        color, scaleX, scaleY, textColor, text = info
+        self.buttonColorLabel.setColor(color)
+        self.buttonColorLabel.updateCmdsColorLabel(color)
         
-    def getHeight(self) -> int:
-        return self.heightNumberLineEdit.get()
+        self.widthNumberLineEdit.set(scaleX)
+        self.heightNumberLineEdit.set(scaleY)
         
-    def getText(self) -> str:
-        return self.labelLineEdit.text()
-        
-    def getTextColor(self) -> QtGui.QColor:
-        pass
-        
-    # -----------------------------
-    def setButtonColor(self, color: QtGui.QColor):
-        pass
-    
-    def setWidth(self, width: int):
-        self.widthNumberLineEdit.set(width)
-        
-    def setHeight(self, height: int):
-        self.heightNumberLineEdit.set(height)
-        
-    def setText(self, text: str):
+        self.labelTextColor.setColor(textColor)
+        self.labelTextColor.updateCmdsColorLabel(textColor)
         self.labelLineEdit.setText(text)
         
-    def setTextColor(self, color: QtGui.QColor):
-        pass
+        
+    def get(self) -> list:
+        data = [self.buttonColorLabel.getColor(),
+                self.widthNumberLineEdit.get(),
+                self.heightNumberLineEdit.get(),
+                self.labelTextColor.getColor(),
+                self.labelLineEdit.text()]
+        self.toolboxDataUpdated.emit(data)
         
 if __name__ =='__main__':        
 
     t = ToolBoxWidget()
     t.show()      
-    t.setWidth(85.36) 
+

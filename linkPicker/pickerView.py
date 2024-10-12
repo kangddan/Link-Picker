@@ -1,6 +1,7 @@
 from PySide2 import QtWidgets
 from PySide2 import QtGui
 from PySide2 import QtCore
+from maya import cmds
 
 import importlib
 from linkPicker import qtUtils, pickerButton
@@ -48,6 +49,9 @@ class AxisWidget(QtWidgets.QWidget):
 
 class PickerView(QtWidgets.QWidget):
     
+    buttonSelected     = QtCore.Signal(list)
+    requestToolboxData = QtCore.Signal()
+    
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAttribute(QtCore.Qt.WA_StyledBackground, True) 
@@ -55,6 +59,7 @@ class PickerView(QtWidgets.QWidget):
         self.setStyleSheet('#PickerView { background-color: #333333;}')
         self.setMouseTracking(True)
         
+        self._createActions()
         self._createMenu()
         self._createWidgets()
         self._createConnections()
@@ -92,17 +97,23 @@ class PickerView(QtWidgets.QWidget):
         # --------------------------------------
         self.buttonsMoveTag = False
         self.buttonsTranslateOffset = {}
+        # --------------------------------------
+        # init button attr
+        self.buttonAttributes = [QtGui.QColor(QtCore.Qt.yellow), 40, 40, QtGui.QColor(QtCore.Qt.black), '']
+        
+
+    def _createActions(self):
+        self.addOneButtonAction   = QtWidgets.QAction(QtGui.QIcon(':addClip.png'), 'Add One Button', self)
+        self.addManyButtonsAction = QtWidgets.QAction('Add Many Buttons',  self)
+        self.updateButtonAction   = QtWidgets.QAction(QtGui.QIcon(':refresh.png'), 'Update Button', self)
+        self.deleteButtonAction   = QtWidgets.QAction(QtGui.QIcon(':delete.png'), 'Delete Button',  self)
+        
+        self.resetViewAction = QtWidgets.QAction(QtGui.QIcon(':rvRealSize.png'), 'Reset View', self)
+        self.frameViewAction = QtWidgets.QAction(QtGui.QIcon(':visible.png'), 'Frame View', self)
+        
         
     def _createMenu(self):
-        self.pickerViewMenu       = QtWidgets.QMenu(self)
-        self.addOneButtonAction   = QtWidgets.QAction(QtGui.QIcon(':addClip.png'), 'Add One Button', self.pickerViewMenu)
-        self.addManyButtonsAction = QtWidgets.QAction('Add Many Buttons',  self.pickerViewMenu)
-        self.updateButtonAction   = QtWidgets.QAction(QtGui.QIcon(':refresh.png'), 'Update Button', self.pickerViewMenu)
-        self.deleteButtonAction   = QtWidgets.QAction(QtGui.QIcon(':delete.png'), 'Delete Button',  self.pickerViewMenu)
-        
-        self.resetViewAction = QtWidgets.QAction(QtGui.QIcon(':rvRealSize.png'), 'Reset View', self.pickerViewMenu)
-        self.frameViewAction = QtWidgets.QAction(QtGui.QIcon(':visible.png'), 'Frame View', self.pickerViewMenu)
-        
+        self.pickerViewMenu = QtWidgets.QMenu(self)
         self.pickerViewMenu.addAction(self.addOneButtonAction)
         self.pickerViewMenu.addAction(self.addManyButtonsAction)
         self.pickerViewMenu.addAction(self.updateButtonAction)
@@ -110,6 +121,12 @@ class PickerView(QtWidgets.QWidget):
         self.pickerViewMenu.addSeparator()
         self.pickerViewMenu.addAction(self.resetViewAction)
         self.pickerViewMenu.addAction(self.frameViewAction)
+        
+    
+    def _updatePickerMenuActions(self):
+        sel = cmds.ls(sl=True, fl=True)
+        self.addOneButtonAction.setEnabled(True if sel else False)
+        self.addManyButtonsAction.setEnabled(True if len(sel) > 1 else False)
         
         
     def _createWidgets(self):
@@ -120,6 +137,8 @@ class PickerView(QtWidgets.QWidget):
         self.selectionBox = SelectionBox(parent=self)
         
     def _createConnections(self):
+        self.pickerViewMenu.aboutToShow.connect(self._updatePickerMenuActions)
+        
         self.resetViewAction.triggered.connect(self._resetView)
         self.addOneButtonAction.triggered.connect(self._createButton)
         
@@ -127,33 +146,50 @@ class PickerView(QtWidgets.QWidget):
     def _getPickerButtons(self) -> list[pickerButton.PickerButton]:
         return [button for button in self.findChildren(pickerButton.PickerButton)]   
         
+        
     def _clearSelectedButtons(self):
         for button in self.selectedButtons:
             button.setSelected(False)
         self.selectedButtons.clear()  
-        
-    
+
+
     # ------------------------------------------------------------------
-    
-    def _getButtonColor(self) -> QtGui.QColor:
-        pass
-    
+    def updateButtonsColor(self, color: QtGui.QColor):
+        for but in self.selectedButtons:
+            but.updateColor(color)
+            
+    def updateButtonsTextColor(self, color: QtGui.QColor):
+        for but in self.selectedButtons:
+            but.updateLabelColor(color)
+            
+    def updateButtonsText(self, text: str):
+        for but in self.selectedButtons:
+            but.updateLabelText(text)
+            
+    # get toolBoxWidget data
+    def updateButtonAttributes(self, data: list) -> list:
+        self.buttonAttributes = data
+
+
     def _createButton(self):
-        buttonColor   = self._getButtonColor() or QtGui.QColor(100, 100, 100)
-        buttonScaleX  = 40
-        buttonscaleY  = 40
-        button = pickerButton.PickerButton(self.buttonGlobalPos, 
-                                           self.buttonsParentPos,
-                                           buttonColor,
-                                           self.sceneScale,
-                                           buttonScaleX, 
-                                           buttonscaleY,
-                                           self)
+        self.requestToolboxData.emit()
+        buttonColor, buttonScaleX, buttonscaleY, labelTextColor, labelText = self.buttonAttributes
+        
+        button = pickerButton.PickerButton(globalPos  = self.buttonGlobalPos, 
+                                           parentPos  = self.buttonsParentPos,
+                                           color      = buttonColor,
+                                           sceneScale = self.sceneScale,
+                                           scaleX     = buttonScaleX, 
+                                           scaleY     = buttonscaleY,
+                                           textColor  = labelTextColor,
+                                           labelText  = labelText,
+                                           parent     = self)
         self._clearSelectedButtons()
         self.selectedButtons = [button]
         button.setSelected(True)
         button.show()
         
+    # ------------------------------------------------------------------    
         
     def _resetView(self):
         self.sceneScale = 1.0
@@ -169,7 +205,9 @@ class PickerView(QtWidgets.QWidget):
     
     
     @staticmethod        
-    def localToGlobal(localPos: QtCore.QPointF, parentPos: QtCore.QPointF, sceneScale: float) -> QtCore.QPointF: 
+    def localToGlobal(localPos: QtCore.QPointF, 
+                      parentPos: QtCore.QPointF, 
+                      sceneScale: float) -> QtCore.QPointF: 
         return (localPos * sceneScale) + parentPos
         
         
@@ -238,11 +276,17 @@ class PickerView(QtWidgets.QWidget):
                 self._clearSelectedButtons()
                 self.selectedButtons = [oneButton]
                 oneButton.setSelected(True)
+                '''
+                Convert from the button's local position to world position to avoid errors caused by floating-point precision
+                '''
                 globalPos = PickerView.localToGlobal(oneButton.localPos, self.buttonsParentPos, self.sceneScale)
                 self.buttonsTranslateOffset[oneButton] = globalPos - localPos
                 
             elif self.selectedButtons and any(but.geometry().contains(localPos.toPoint()) for but in self.selectedButtons):
                 for button in self.selectedButtons:
+                    '''
+                    Convert from the button's local position to world position to avoid errors caused by floating-point precision
+                    '''
                     globalPos = PickerView.localToGlobal(button.localPos, self.buttonsParentPos, self.sceneScale)
                     self.buttonsTranslateOffset[button] = globalPos - localPos
             else:
@@ -369,6 +413,13 @@ class PickerView(QtWidgets.QWidget):
             self.buttonsMoveTag = False
 
         self.setCursor(QtCore.Qt.ArrowCursor)
+        
+        # ----------------------------------
+        if self.selectedButtons:
+            endBut = self.selectedButtons[-1]
+            butInfo = [endBut.color, endBut.scaleX, endBut.scaleY, endBut.textColor, endBut.labelText]
+            self.buttonSelected.emit(butInfo)
+            
         super().mouseReleaseEvent(event)
         print(self.selectedButtons)
 
@@ -380,3 +431,5 @@ if __name__ =='__main__':
     layout = QtWidgets.QVBoxLayout(UI)
     layout.addWidget(PickerView())
     UI.show()
+    
+    

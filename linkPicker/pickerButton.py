@@ -3,10 +3,14 @@ from PySide2 import QtGui
 from PySide2 import QtCore
 
 
+
+
 class PickerButton(QtWidgets.QWidget):
+    SELECTED_COLOR = QtGui.QColor(225, 225, 225)
     
     def __repr__(self):
-        return f'< Buttton: globalPos: ({self.pos().x()}, {self.pos().y()}), localPos: ({self.localPos.x()}, {self.localPos.y()})>'
+        #return f'< Buttton: globalPos: ({self.pos().x()}, {self.pos().y()}), localPos: ({self.localPos.x()}, {self.localPos.y()})>'
+        return f'<Buttton: local: ({self.localPos.x()}, {self.localPos.y()})>'
     
     def __init__(self, globalPos : QtCore.QPointF, 
                        parentPos : QtCore.QPointF, 
@@ -14,6 +18,8 @@ class PickerButton(QtWidgets.QWidget):
                        sceneScale: float = 1.0, 
                        scaleX    : int = 40,
                        scaleY    : int = 40,
+                       textColor : QtGui.QColor = QtGui.QColor(10, 10, 10),
+                       labelText : str = '',
                        parent    : QtWidgets.QWidget = None):  
         '''
         Args:
@@ -46,11 +52,47 @@ class PickerButton(QtWidgets.QWidget):
         '''
         self.localPos = PickerButton.globalToLocal(buttonGlobalCenterPos, parentPos, sceneScale)
         
-        self.setMinimumSize(8, 8)
-        self.setMaximumSize(400, 400)
+        #self.setMinimumSize(8, 8)
+        #self.setMaximumSize(400, 400)
         
-        self.selected = False
+        # -------------------------------------------------
+        self.buttonColor = color
+        self.selected    = False
+        # -------------------------------------------------
+        self.labelText = labelText
+        self.textColor = textColor
+        self._createWidgets()
+        self._createLayouts()
+        self.updateLabelText(self.labelText)
+        self.updateLabelColor(self.textColor)
         
+    # ---------------------------------------------------------------------------------
+    def _createWidgets(self):
+        self.textLabel = QtWidgets.QLabel('', self)
+        self.textLabel.setAlignment(QtCore.Qt.AlignCenter)
+        
+    def _createLayouts(self):
+        mainLayout = QtWidgets.QVBoxLayout(self)
+        mainLayout.setContentsMargins(0, 0, 0, 0)
+        mainLayout.addWidget(self.textLabel)
+        
+    def updateLabelText(self, text: str):
+        self.labelText = text
+        self.textLabel.setFont(QtGui.QFont("Arial", 10))
+        self.textLabel.setText(self.labelText)
+        
+    def updateLabelColor(self, color: QtGui.QColor):
+        self.textColor = color
+        palette = self.textLabel.palette()
+        palette.setColor(QtGui.QPalette.WindowText, self.textColor) 
+        self.textLabel.setPalette(palette)
+    
+    # ---------------------------------------------------------------------------------
+    def setSelected(self, selected: bool) -> None:
+        self.selected    = selected
+        self.buttonColor = PickerButton.SELECTED_COLOR if self.selected else self.color
+        self.update()
+    
     
     def resetPos(self) -> None:
         self.resize(self.scaleX, self.scaleY)
@@ -58,21 +100,25 @@ class PickerButton(QtWidgets.QWidget):
     
     
     @staticmethod
-    def globalToLocal(globalPos: QtCore.QPointF, parentPos: QtCore.QPointF, sceneScale: float) -> QtCore.QPointF:  
+    def globalToLocal(globalPos: QtCore.QPointF, 
+                      parentPos: QtCore.QPointF, 
+                      sceneScale: float) -> QtCore.QPointF:  
         '''
         Convert global position to local position based on parent position and scene scale.
         '''
         return (globalPos - parentPos) * 1.0 / sceneScale 
     
     
-    def updateLocalPos(self, globalPos: QtCore.QPointF, parentPos: QtCore.QPointF, sceneScale: float) -> None:
+    def updateLocalPos(self, globalPos: QtCore.QPointF, 
+                             parentPos: QtCore.QPointF, 
+                             sceneScale: float) -> None:
         self.localPos = PickerButton.globalToLocal(globalPos, parentPos, sceneScale)
         
          
     def updateColor(self, color: QtGui.QColor) -> None:
         if color == self.color:
             return
-        self.color  = color
+        self.color = self.buttonColor = color
         self.update()
         
     # ----------------------------------------------------------------------------    
@@ -92,14 +138,16 @@ class PickerButton(QtWidgets.QWidget):
         
     def paintEvent(self, event):
         painter = QtGui.QPainter(self)
-        painter.fillRect(event.rect(), self.color)
+        painter.fillRect(event.rect(), self.buttonColor)
         
 if __name__ == '__main__':
     p = PickerButton(QtCore.QPointF(0, 0), QtCore.QPointF(0, 0))
     p.show()
-    p.updateColor(QtGui.QColor(10, 200, 200))
-    p.updateScaleY(150, 1)
-        
+    p.updateColor(QtGui.QColor(10, 100, 200))
+    #p.updateScaleY(150, 1)
+    #p.setSelected(False)
+    #p.updateColor(QtGui.QColor(88, 55, 55))
+
         
 
         

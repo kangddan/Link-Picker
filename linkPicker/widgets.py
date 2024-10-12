@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import maya.api.OpenMaya as om2
 from PySide2 import QtWidgets
 from PySide2 import QtGui
 from PySide2 import QtCore
@@ -62,7 +63,8 @@ class MyTabBar(QtWidgets.QTabBar):
         
     
 class MyTabWidget(QtWidgets.QTabWidget):
-    newTab = QtCore.Signal()
+    newTab    = QtCore.Signal()
+    tabClosed = QtCore.Signal(object)
     
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -181,15 +183,15 @@ class MyTabWidget(QtWidgets.QTabWidget):
                 return False 
 
         elif event.type() == QtCore.QEvent.MouseMove and self.MouseRightandMid  and not self.hasMoved:
-             # vis end tab
+            # vis end tab
             self.setTabVisible(self.count() - 1, False)
             self.hasMoved = True
             return False
 
         elif event.type() == QtCore.QEvent.MouseButtonRelease and event.button() == QtCore.Qt.LeftButton:
             if self.hasMoved or self.MouseRightandMid:
-                # vis end tab
-                # If the interval is too slow, quickly dragging the tab may cause 'New Tab' to appear in the wrong position £¡£¡
+                #vis end tab
+                #If the interval is too slow, quickly dragging the tab may cause 'New Tab' to appear in the wrong position £¡£¡
                 self.showTabTimer.start(100)
                 
             self.isMovingTab      = False
@@ -220,6 +222,9 @@ class MyTabWidget(QtWidgets.QTabWidget):
         
         if reply == QtWidgets.QMessageBox.StandardButton.No:
             return 
+            
+        # Disconnect signals initialized in pickerView before removing the tab
+        self.tabClosed.emit(self.widget(index))
         self.removeTab(index)
         self.setCurrentIndex(index - 1)
         
@@ -229,8 +234,11 @@ class MyTabWidget(QtWidgets.QTabWidget):
         for i in reversed(range(count)):
             try:
                 self._closeTab(i)
-            except:
-                pass
+            except Exception as e:
+                import traceback
+                traceback.print_exc() 
+                om2.MGlobal.displayWarning(f'Incorrect tab. \n{str(e)}')
+                continue
             
             
     def _closeOthers(self):

@@ -150,12 +150,11 @@ class MainUI(QtWidgets.QDialog):
         
     def _updatePickerMenuActions(self):
         pass
-        
-    
+
     def _createWidgets(self):
         self.tabWidget     = widgets.MyTabWidget(parent=self)
         self.toolBoxWidget = toolBoxWidget.ToolBoxWidget()
-
+        
 
     def _createLayouts(self):
         mainLayout = QtWidgets.QVBoxLayout(self)
@@ -167,6 +166,7 @@ class MainUI(QtWidgets.QDialog):
         
     def _createConnections(self):
         self.tabWidget.newTab.connect(self._createNewTab)
+        self.tabWidget.tabClosed.connect(self._handleTabWidgetDisconnect) 
         
         self.fileMenu.aboutToShow.connect(self._updateFileMenuActions)
         self.editMenu.aboutToShow.connect(self._updateEditMenuActions)
@@ -179,13 +179,37 @@ class MainUI(QtWidgets.QDialog):
         self.renameTabAction.triggered.connect(self._handleRenameTab)
         
         self.ToolAction.triggered.connect(lambda: self.toolBoxWidget.hide() if self.toolBoxWidget.isVisible() else self.toolBoxWidget.show())
+    
+    # ---------------------------------------------------------------------------------------------------
+    def _handleTabWidgetDisconnect(self, widget):
+        '''
+        Disconnect signals initialized in pickerView before removing the tab
+        '''
+        if isinstance(widget, pickerView.PickerView):
+            widget.buttonSelected.disconnect(self.toolBoxWidget.set)
+            widget.requestToolboxData.disconnect(self.toolBoxWidget.get)
+            
+            self.toolBoxWidget.toolboxDataUpdated.disconnect(widget.updateButtonAttributes)
+            self.toolBoxWidget.buttonColorLabelSelected.disconnect(widget.updateButtonsColor)
+            self.toolBoxWidget.labelTextColorSelected.disconnect(widget.updateButtonsTextColor)
+            self.toolBoxWidget.textUpdate.disconnect(widget.updateButtonsText)
         
     def _createNewTab(self):
         pickerViewInstance = pickerView.PickerView()
+        
+        pickerViewInstance.buttonSelected.connect(self.toolBoxWidget.set)
+        pickerViewInstance.requestToolboxData.connect(self.toolBoxWidget.get)
+        self.toolBoxWidget.toolboxDataUpdated.connect(pickerViewInstance.updateButtonAttributes)
+        self.toolBoxWidget.buttonColorLabelSelected.connect(pickerViewInstance.updateButtonsColor)
+        self.toolBoxWidget.labelTextColorSelected.connect(pickerViewInstance.updateButtonsTextColor)
+        self.toolBoxWidget.textUpdate.connect(pickerViewInstance.updateButtonsText)
+        
+        
         index = self.tabWidget.addNewTab(pickerViewInstance)
         if index is not None:
             self.tabWidget.setCurrentIndex(index) # Current Tab
     
+    # ------------------------------------------------------------------------------------------------------
     def _handleCloseTab(self):
         index = self.tabWidget.currentIndex()
         self.tabWidget._closeTab(index)
