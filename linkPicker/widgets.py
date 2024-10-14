@@ -192,8 +192,13 @@ class MyTabWidget(QtWidgets.QTabWidget):
             if self.hasMoved or self.MouseRightandMid:
                 #vis end tab
                 #If the interval is too slow, quickly dragging the tab may cause 'New Tab' to appear in the wrong position £¡£¡
-                self.showTabTimer.start(100)
-                
+                self.showTabTimer.start(250)
+            
+            if not isinstance(self.widget(self.count() - 1), NullWidget):
+                nullWidgetIndex = self.indexOf(self.nullWidget)
+                self.tabBar.moveTab(nullWidgetIndex, self.count() - 1)
+            # ----------------------------------------------------------------------------
+            
             self.isMovingTab      = False
             self.MouseRightandMid = False
             self.hasMoved         = False
@@ -204,8 +209,8 @@ class MyTabWidget(QtWidgets.QTabWidget):
     def _showAddTab(self):
         self.showTabTimer.stop()
         self.setTabVisible(self.count() - 1, True) 
-        
-    
+
+
     def addNewTab(self, widget) -> int:
         tabName: str = self._getNextName()
         index:   int = self.insertTab(self.count() - 1, widget, tabName)
@@ -224,8 +229,11 @@ class MyTabWidget(QtWidgets.QTabWidget):
             return 
             
         # Disconnect signals initialized in pickerView before removing the tab
-        self.tabClosed.emit(self.widget(index))
+        widget = self.widget(index)
+        self.tabClosed.emit(widget)
+        
         self.removeTab(index)
+        widget.deleteLater()
         self.setCurrentIndex(index - 1)
         
         
@@ -374,6 +382,7 @@ class NumberLineEdit(QtWidgets.QLineEdit):
     def mouseReleaseEvent(self, event):
         if event.button() == QtCore.Qt.MiddleButton:
             self.dragging = False
+            #self.editingFinished.emit() # update signal emit
             self.setCursor(QtCore.Qt.IBeamCursor)
         else:
             super().mouseReleaseEvent(event)

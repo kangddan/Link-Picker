@@ -11,3 +11,6 @@ def getMayaMainWindow() -> QtWidgets.QMainWindow:
         return wrapInstance(int(MQtUtil.mainWindow()), QtWidgets.QMainWindow)
     return wrapInstance(long(MQtUtil.mainWindow()), QtWidgets.QWidget)
     
+
+
+    

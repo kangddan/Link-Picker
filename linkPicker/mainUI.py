@@ -1,11 +1,12 @@
 import sys
 import importlib
 from PySide2 import QtWidgets, QtGui, QtCore
-from linkPicker import qtUtils, widgets, pickerView, colorWidget, toolBoxWidget
+from linkPicker import qtUtils, widgets, pickerView, colorWidget, toolBoxWidget, config
 importlib.reload(pickerView)
 importlib.reload(widgets)
 importlib.reload(colorWidget)
 importlib.reload(toolBoxWidget)
+importlib.reload(config)
 
 class MainUI(QtWidgets.QDialog):
     
@@ -82,8 +83,11 @@ class MainUI(QtWidgets.QDialog):
         self.copyAction   = QtWidgets.QAction(QtGui.QIcon(':polyCopyUV.png'), 'Copy',   self.editMenu, shortcut='Ctrl+C')
         self.pasteAction  = QtWidgets.QAction(QtGui.QIcon(':polyPasteUV.png'), 'Paste', self.editMenu, shortcut='Ctrl+V')
         self.deleteAction = QtWidgets.QAction(QtGui.QIcon(':delete.png'), 'Delete',     self.editMenu, shortcut='Delete')
-        self.mirrorAction = QtWidgets.QAction(QtGui.QIcon(':cursor_loop.png'),'Mirror', self.editMenu)
+        self.mirrorAction = QtWidgets.QAction(QtGui.QIcon(config.mirrorIcon), 'Mirror', self.editMenu)
         self.ToolAction   = QtWidgets.QAction(QtGui.QIcon(':toolSettings.png'),'Hide ToolBox', self.editMenu)
+        
+        self.deletePickerDataAction  = QtWidgets.QAction(QtGui.QIcon(':delete.png'), 'Delete Picker Data',     self.pickerMenu)
+        self.preferencesAction       = QtWidgets.QAction(QtGui.QIcon(':advancedSettings.png'),'Preferences...',  self.pickerMenu, shortcut='Ctrl+E')
         
         self.editMenu.addAction(self.undoAction)
         self.editMenu.addAction(self.redoAction)
@@ -96,6 +100,9 @@ class MainUI(QtWidgets.QDialog):
         self.editMenu.addAction(self.mirrorAction)
         self.editMenu.addSeparator()
         self.editMenu.addAction(self.ToolAction)
+        self.editMenu.addSeparator()
+        self.editMenu.addAction(self.deletePickerDataAction)
+        self.editMenu.addAction(self.preferencesAction)
         
         # ----------------------------------------------------------------------------------------------------------------
         self.addOneButtonAction      = QtWidgets.QAction(QtGui.QIcon(':addClip.png'), 'Add One Button', self.pickerMenu)
@@ -110,10 +117,7 @@ class MainUI(QtWidgets.QDialog):
         
         self.resetViewAction         = QtWidgets.QAction(QtGui.QIcon(':rvRealSize.png'), 'Reset View',  self.pickerMenu)
         self.frameViewAction         = QtWidgets.QAction(QtGui.QIcon(':visible.png'), 'Frame View',     self.pickerMenu)
-        
-        self.deletePickerDataAction  = QtWidgets.QAction(QtGui.QIcon(':delete.png'), 'Delete Picker Data',     self.pickerMenu)
-        self.preferencesAction       = QtWidgets.QAction(QtGui.QIcon(':advancedSettings.png'),'Preferences...',  self.pickerMenu, shortcut='Ctrl+E')
-        
+
         self.pickerMenu.addAction(self.addOneButtonAction)
         self.pickerMenu.addAction(self.addManyButtonsAction)
         self.pickerMenu.addAction(self.updateButtonAction)
@@ -129,9 +133,6 @@ class MainUI(QtWidgets.QDialog):
         self.pickerMenu.addSeparator()
         self.pickerMenu.addAction(self.resetViewAction)
         self.pickerMenu.addAction(self.frameViewAction)
-        self.pickerMenu.addSeparator()
-        self.pickerMenu.addAction(self.deletePickerDataAction)
-        self.pickerMenu.addAction(self.preferencesAction)
         
         # ----------------------------------------------------------------------------------------------------------------
         self.aboutAction = QtWidgets.QAction(QtGui.QIcon(':help.png'), 'About Link Picker', self.helpMenu)
@@ -174,9 +175,9 @@ class MainUI(QtWidgets.QDialog):
         
         self.quitPickerAction.triggered.connect(self.close)
         self.newAction.triggered.connect(self.tabWidget.newTab.emit)
-        self.closeAction.triggered.connect(self._handleCloseTab)
-        self.closeAllAction.triggered.connect(self._handleCloseAllTabs)
-        self.renameTabAction.triggered.connect(self._handleRenameTab)
+        self.closeAction.triggered.connect(lambda: self.tabWidget._closeTab(self.tabWidget.currentIndex()))
+        self.closeAllAction.triggered.connect(lambda: self.tabWidget._closeAllTab())
+        self.renameTabAction.triggered.connect(lambda: self.tabWidget._renameTab(self.tabWidget.currentIndex()))
         
         self.ToolAction.triggered.connect(lambda: self.toolBoxWidget.hide() if self.toolBoxWidget.isVisible() else self.toolBoxWidget.show())
     
@@ -191,6 +192,10 @@ class MainUI(QtWidgets.QDialog):
             
             self.toolBoxWidget.toolboxDataUpdated.disconnect(widget.updateButtonAttributes)
             self.toolBoxWidget.buttonColorLabelSelected.disconnect(widget.updateButtonsColor)
+            
+            self.toolBoxWidget.scaleXUpdate.disconnect(widget.updateButtonsScaleX)
+            self.toolBoxWidget.scaleYUpdate.disconnect(widget.updateButtonsScaleY)
+            
             self.toolBoxWidget.labelTextColorSelected.disconnect(widget.updateButtonsTextColor)
             self.toolBoxWidget.textUpdate.disconnect(widget.updateButtonsText)
         
@@ -201,6 +206,10 @@ class MainUI(QtWidgets.QDialog):
         pickerViewInstance.requestToolboxData.connect(self.toolBoxWidget.get)
         self.toolBoxWidget.toolboxDataUpdated.connect(pickerViewInstance.updateButtonAttributes)
         self.toolBoxWidget.buttonColorLabelSelected.connect(pickerViewInstance.updateButtonsColor)
+        
+        self.toolBoxWidget.scaleXUpdate.connect(pickerViewInstance.updateButtonsScaleX)
+        self.toolBoxWidget.scaleYUpdate.connect(pickerViewInstance.updateButtonsScaleY)
+        
         self.toolBoxWidget.labelTextColorSelected.connect(pickerViewInstance.updateButtonsTextColor)
         self.toolBoxWidget.textUpdate.connect(pickerViewInstance.updateButtonsText)
         
@@ -209,17 +218,6 @@ class MainUI(QtWidgets.QDialog):
         if index is not None:
             self.tabWidget.setCurrentIndex(index) # Current Tab
     
-    # ------------------------------------------------------------------------------------------------------
-    def _handleCloseTab(self):
-        index = self.tabWidget.currentIndex()
-        self.tabWidget._closeTab(index)
-        
-    def _handleCloseAllTabs(self):
-        self.tabWidget._closeAllTab()
-        
-    def _handleRenameTab(self):
-        index = self.tabWidget.currentIndex()
-        self.tabWidget._renameTab(index)
 
 
 if __name__ == '__main__':

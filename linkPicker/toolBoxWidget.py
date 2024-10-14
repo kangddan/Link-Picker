@@ -14,6 +14,9 @@ class ToolBoxWidget(QtWidgets.QWidget):
     labelTextColorSelected   = QtCore.Signal(QtGui.QColor)
     textUpdate               = QtCore.Signal(str)
     
+    scaleXUpdate = QtCore.Signal(int)
+    scaleYUpdate = QtCore.Signal(int)
+    
     def __init__(self, parent=None):
         super().__init__(parent)
         self._createWidgets()
@@ -26,10 +29,10 @@ class ToolBoxWidget(QtWidgets.QWidget):
         self.colorLabel           = QtWidgets.QLabel('<span style="font-size: 15px; font-weight: 400;">Color</span>')
         self.buttonColorLabel     = colorWidget.ColorWidget(34, 24, QtGui.QColor(QtCore.Qt.yellow))
         self.widthLabel           = QtWidgets.QLabel('<span style="font-size: 15px; font-weight: 400;">Width</span>')
-        self.widthNumberLineEdit  = widgets.NumberLineEdit('int', 40, 1, 8, 400)
+        self.widthNumberLineEdit  = widgets.NumberLineEdit('int', 40, 1, 10, 400)
 
         self.heightLabel          = QtWidgets.QLabel('<span style="font-size: 15px; font-weight: 400;">Height</span>')
-        self.heightNumberLineEdit = widgets.NumberLineEdit('int', 40, 1, 8, 400)
+        self.heightNumberLineEdit = widgets.NumberLineEdit('int', 40, 1, 10, 400)
 
         self.buttonLabel         = QtWidgets.QLabel('<span style="font-size: 15px; font-weight: 400;">Label</span>')
         self.labelTextColor      = colorWidget.ColorWidget(34, 24, QtGui.QColor(QtCore.Qt.black))
@@ -66,6 +69,9 @@ class ToolBoxWidget(QtWidgets.QWidget):
         self.buttonColorLabel.colorSelected.connect(self.buttonColorLabelSelected.emit)
         self.labelTextColor.colorSelected.connect(self.labelTextColorSelected.emit)
         self.labelLineEdit.editingFinished.connect(lambda: self.textUpdate.emit(self.labelLineEdit.text()))
+        
+        self.widthNumberLineEdit.editingFinished.connect(lambda: self.scaleXUpdate.emit(self.widthNumberLineEdit.get()))
+        self.heightNumberLineEdit.editingFinished.connect(lambda: self.scaleYUpdate.emit(self.heightNumberLineEdit.get()))
         
         
     def _moveWidgets(self, fromLayout, toLayout, widgets):
