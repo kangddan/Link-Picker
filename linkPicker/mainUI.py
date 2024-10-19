@@ -8,6 +8,37 @@ importlib.reload(colorWidget)
 importlib.reload(toolBoxWidget)
 importlib.reload(config)
 
+
+        
+class NamespaceWidget(QtWidgets.QWidget):
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._createWidgets()
+        self._createLayouts()
+        
+    def _createWidgets(self):
+        self.namespaceLabel    = QtWidgets.QLabel('Namespace:')
+        self.namespaceComboBox = QtWidgets.QComboBox()
+        #self.namespaceComboBox.setItemDelegate(widgets.CustomDelegate(self, 30))
+        self.namespaceComboBox.addItems([':', ':link', 'Parent', 'Joint Shape', 'Parent Constr', 'Matrix Constr'])
+        
+        self.updateBut = QtWidgets.QPushButton()
+        self.updateBut.setFixedSize(25, 25)
+        self.updateBut.setIcon(QtGui.QIcon(':refresh.png'))
+        
+    def _createLayouts(self):
+        mainLayout = QtWidgets.QHBoxLayout(self)
+        mainLayout.setSpacing(2)
+        mainLayout.setContentsMargins(0, 0, 0, 0)
+        mainLayout.addWidget(self.namespaceLabel)
+        mainLayout.addWidget(self.namespaceComboBox)
+        mainLayout.addWidget(self.updateBut)
+        mainLayout.addWidget(QtWidgets.QLabel(' '))
+        
+    def hideNamespaceLabel(self):
+        pass
+
 class MainUI(QtWidgets.QDialog):
     
     _INSTANCE = None
@@ -43,6 +74,8 @@ class MainUI(QtWidgets.QDialog):
         self.fileMenu    = QtWidgets.QMenu('File',   self.mainMenuBar) 
         self.editMenu    = QtWidgets.QMenu('Edit',   self.mainMenuBar)
         self.pickerMenu  = QtWidgets.QMenu('Picker', self.mainMenuBar)
+        self.pickerMenu.setEnabled(False)
+        
         self.helpMenu    = QtWidgets.QMenu('Help',   self.mainMenuBar)
         self.fileMenu.setTearOffEnabled(True)
         self.editMenu.setTearOffEnabled(True)
@@ -52,6 +85,7 @@ class MainUI(QtWidgets.QDialog):
         self.mainMenuBar.addMenu(self.editMenu)
         self.mainMenuBar.addMenu(self.pickerMenu)
         self.mainMenuBar.addMenu(self.helpMenu)
+    
         
     def _createActions(self):
         
@@ -83,7 +117,7 @@ class MainUI(QtWidgets.QDialog):
         self.copyAction   = QtWidgets.QAction(QtGui.QIcon(':polyCopyUV.png'), 'Copy',   self.editMenu, shortcut='Ctrl+C')
         self.pasteAction  = QtWidgets.QAction(QtGui.QIcon(':polyPasteUV.png'), 'Paste', self.editMenu, shortcut='Ctrl+V')
         self.deleteAction = QtWidgets.QAction(QtGui.QIcon(':delete.png'), 'Delete',     self.editMenu, shortcut='Delete')
-        self.mirrorAction = QtWidgets.QAction(QtGui.QIcon(config.mirrorIcon), 'Mirror', self.editMenu)
+        self.mirrorAction = QtWidgets.QAction(QtGui.QIcon(':teLoopTool.png'), 'Mirror', self.editMenu)
         self.ToolAction   = QtWidgets.QAction(QtGui.QIcon(':toolSettings.png'),'Hide ToolBox', self.editMenu)
         
         self.deletePickerDataAction  = QtWidgets.QAction(QtGui.QIcon(':delete.png'), 'Delete Picker Data',     self.pickerMenu)
@@ -153,6 +187,9 @@ class MainUI(QtWidgets.QDialog):
         pass
 
     def _createWidgets(self):
+        self.namespaceWidget = NamespaceWidget()
+        self.namespaceWidget.hide()
+        # -----------------------------------------------------
         self.tabWidget     = widgets.MyTabWidget(parent=self)
         self.toolBoxWidget = toolBoxWidget.ToolBoxWidget()
         
@@ -161,7 +198,10 @@ class MainUI(QtWidgets.QDialog):
         mainLayout = QtWidgets.QVBoxLayout(self)
         mainLayout.setSpacing(4)
         mainLayout.setContentsMargins(1, 1, 1, 6)
+        
         mainLayout.setMenuBar(self.mainMenuBar)
+        self.mainMenuBar.setCornerWidget(self.namespaceWidget, QtCore.Qt.TopRightCorner)
+        
         mainLayout.addWidget(self.tabWidget)
         mainLayout.addWidget(self.toolBoxWidget)
         
@@ -199,6 +239,10 @@ class MainUI(QtWidgets.QDialog):
             self.toolBoxWidget.labelTextColorSelected.disconnect(widget.updateButtonsTextColor)
             self.toolBoxWidget.textUpdate.disconnect(widget.updateButtonsText)
         
+
+        if self.namespaceWidget.isVisible() and self.tabWidget.count() <= 2: # hide namespace widget
+            self.namespaceWidget.hide()
+        
     def _createNewTab(self):
         pickerViewInstance = pickerView.PickerView()
         
@@ -217,6 +261,9 @@ class MainUI(QtWidgets.QDialog):
         index = self.tabWidget.addNewTab(pickerViewInstance)
         if index is not None:
             self.tabWidget.setCurrentIndex(index) # Current Tab
+        
+        if not self.namespaceWidget.isVisible(): # show namespace widget
+            self.namespaceWidget.show()
     
 
 

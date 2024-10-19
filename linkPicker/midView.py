@@ -18,18 +18,21 @@ class PickerView(QtWidgets.QWidget):
     
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFocusPolicy(QtCore.Qt.StrongFocus)
+        #self.resize(600, 700)
         self.setAttribute(QtCore.Qt.WA_StyledBackground, True) 
         self.setObjectName('PickerView')
         self.setStyleSheet('#PickerView { background-color: #333333;}')
         self.setMouseTracking(True)
         
-        self._createMenu()
         self._createActions()
+        self._createMenu()
         self._createWidgets()
         self._createConnections()
         
         # -------------------------------------
+        self.origPos = QtCore.QPointF(self.width() / 2, self.height() / 2)  # 初始中心位置
+        self.viewOffset = QtCore.QPointF(0, 0) 
+        
         self.sceneScale = 1.0
         self.origScale  = 1.0
         
@@ -37,9 +40,9 @@ class PickerView(QtWidgets.QWidget):
         self.scaleView = False
 
         self.clickedParentPos = QtCore.QPointF()
-        self.buttonsParentPos = QtCore.QPointF()
+        self.buttonsParentPos = QtCore.QPointF(self.width() / 2, self.height() / 2)
         self.clickedPos       = QtCore.QPointF()
-
+ 
         self.buttonGlobalPos  = QtCore.QPointF() # set button global pos by menu
         # -------------------------------------
         '''
@@ -65,36 +68,27 @@ class PickerView(QtWidgets.QWidget):
         # --------------------------------------
         # init button attr
         self.buttonAttributes = [QtGui.QColor(QtCore.Qt.yellow), 40, 40, QtGui.QColor(QtCore.Qt.black), '']
-        # create buttons
+        # --------------------------------------
         self.isAddingButtons = False
         self.trackedButtons  = []
-        
-
-    def _createMenu(self):
-        self.pickerViewMenu = QtWidgets.QMenu(self)
-
 
     def _createActions(self):
-        self.addOneButtonAction   = QtWidgets.QAction(QtGui.QIcon(':addClip.png'), 'Add One Button', self.pickerViewMenu)
-        self.addManyButtonsAction = QtWidgets.QAction('Add Many Buttons',  self.pickerViewMenu)
-        self.updateButtonAction   = QtWidgets.QAction(QtGui.QIcon(':refresh.png'), 'Update Button', self.pickerViewMenu)
-        self.deleteButtonAction   = QtWidgets.QAction(QtGui.QIcon(':delete.png'), 'Delete Button',  self.pickerViewMenu)
+        self.addOneButtonAction   = QtWidgets.QAction(QtGui.QIcon(':addClip.png'), 'Add One Button', self)
+        self.addManyButtonsAction = QtWidgets.QAction('Add Many Buttons',  self)
+        self.updateButtonAction   = QtWidgets.QAction(QtGui.QIcon(':refresh.png'), 'Update Button', self)
+        self.deleteButtonAction   = QtWidgets.QAction(QtGui.QIcon(':delete.png'), 'Delete Button',  self)
         
-        self.addCommandButtonAction = QtWidgets.QAction(QtGui.QIcon(config.pythonLogo), 'Add Command Button...',  self.pickerViewMenu)
-        self.alignHorizontallyAction = QtWidgets.QAction(QtGui.QIcon(config.alignHorizontallyIcon), 'Align Horizontally', self.pickerViewMenu)
-        self.alignVerticallyAction   = QtWidgets.QAction(QtGui.QIcon(config.alignVerticallyIcon), 'Align Vertically',  self.pickerViewMenu)
-        self.distributeButtonsAction = QtWidgets.QAction('Distribute Buttons Evenly', self.pickerViewMenu)
+        self.addCommandButtonAction = QtWidgets.QAction(QtGui.QIcon(config.pythonLogo), 'Add Command Button...',  self)
+        self.alignHorizontallyAction = QtWidgets.QAction(QtGui.QIcon(config.alignHorizontallyIcon), 'Align Horizontally', self)
+        self.alignVerticallyAction   = QtWidgets.QAction(QtGui.QIcon(config.alignVerticallyIcon), 'Align Vertically',  self)
+        self.distributeButtonsAction = QtWidgets.QAction('Distribute Buttons Evenly', self)
         
-        self.frameDefaultAction  = QtWidgets.QAction(QtGui.QIcon(':home.png'), 'Frame Default', self.pickerViewMenu)
-        self.frameSelectedAction = QtWidgets.QAction(QtGui.QIcon(':visible.png'), 'Frame Selected/All', self.pickerViewMenu, shortcut='F')
+        self.resetViewAction = QtWidgets.QAction(QtGui.QIcon(':rvRealSize.png'), 'Reset View', self)
+        self.frameViewAction = QtWidgets.QAction(QtGui.QIcon(':visible.png'), 'Frame View', self)
+         
         
-        self.raiseButtonAction  = QtWidgets.QAction(QtGui.QIcon(':nodeGrapherArrowUp.png'), 'Bring to Front', self.pickerViewMenu)
-        self.lowerButtonAction = QtWidgets.QAction(QtGui.QIcon(':nodeGrapherArrowDown.png'), 'Send to Back', self.pickerViewMenu)
-        
-        self.moveForwardAction = QtWidgets.QAction(QtGui.QIcon(':moveUVUp.png'), 'Move to Front', self.pickerViewMenu, shortcut='Up')
-        self.moveBackwardAction = QtWidgets.QAction(QtGui.QIcon(':moveUVDown.png'), 'Move to Back', self.pickerViewMenu, shortcut='Down')
-        
-        # ----------------------------------------------------
+    def _createMenu(self):
+        self.pickerViewMenu = QtWidgets.QMenu(self)
         self.pickerViewMenu.addAction(self.addOneButtonAction)
         self.pickerViewMenu.addAction(self.addManyButtonsAction)
         self.pickerViewMenu.addAction(self.updateButtonAction)
@@ -109,25 +103,10 @@ class PickerView(QtWidgets.QWidget):
         self.pickerViewMenu.addAction(self.distributeButtonsAction)
         
         self.pickerViewMenu.addSeparator()
-        self.pickerViewMenu.addAction(self.raiseButtonAction)
-        self.pickerViewMenu.addAction(self.moveForwardAction)
-        self.pickerViewMenu.addAction(self.moveBackwardAction)
-        self.pickerViewMenu.addAction(self.lowerButtonAction)
-        
-        self.pickerViewMenu.addSeparator()
-        self.pickerViewMenu.addAction(self.frameDefaultAction)
-        self.pickerViewMenu.addAction(self.frameSelectedAction)
-        
+        self.pickerViewMenu.addAction(self.resetViewAction)
+        self.pickerViewMenu.addAction(self.frameViewAction)
     
-    def keyPressEvent(self, event): 
-        if event.key() == QtCore.Qt.Key_F: 
-            self.frameButtonsInView()
-        elif event.key() == QtCore.Qt.Key_Up: 
-            self._moveSelectedButtonsUp()
-        elif event.key() == QtCore.Qt.Key_Down: 
-            self._moveSelectedButtonsDown()
-            
-            
+    
     def _updatePickerMenuActions(self):
         sel = cmds.ls(sl=True, fl=True)
         self.addOneButtonAction.setEnabled(True if sel else False)
@@ -138,22 +117,16 @@ class PickerView(QtWidgets.QWidget):
         self.addManyButtonsAction.setData(sel)
         
         # -------------------------------------------------------------------
-        self.alignHorizontallyAction.setEnabled(True if len(self.selectedButtons) > 1 else False)
-        self.alignVerticallyAction.setEnabled(True if len(self.selectedButtons) > 1 else False)
         self.distributeButtonsAction.setEnabled(True if len(self.selectedButtons) > 2 else False)
-        # -------------------------------------------------------------------
-        self.raiseButtonAction.setEnabled(True if self.selectedButtons else False)
-        self.lowerButtonAction.setEnabled(True if self.selectedButtons else False)
-        self.moveForwardAction.setEnabled(True if self.selectedButtons else False)
-        self.moveBackwardAction.setEnabled(True if self.selectedButtons else False)
         
         
     def _createWidgets(self):
         self.parentAxis = widgets.AxisWidget(self)
+        self.parentAxis.move(QtCore.QPointF(self.width() / 2, self.height() / 2).toPoint())
         self.parentAxis.show()
+        
         # --------------------------------
         self.selectionBox = widgets.SelectionBox(parent=self)
-        
         
     def _createConnections(self):
         self.pickerViewMenu.aboutToShow.connect(self._updatePickerMenuActions)
@@ -165,48 +138,9 @@ class PickerView(QtWidgets.QWidget):
         self.alignHorizontallyAction.triggered.connect(self.alignButtonsHorizontally)
         self.alignVerticallyAction.triggered.connect(self.alignButtonsVertically)
         
-        self.frameDefaultAction.triggered.connect(self._resetView)
-        self.frameSelectedAction.triggered.connect(self.frameButtonsInView)
+        self.resetViewAction.triggered.connect(self._resetView)
+        self.frameViewAction.triggered.connect(self.fitButtonsToView)
         
-        self.raiseButtonAction.triggered.connect(self._raiseSelectedButtons)
-        self.lowerButtonAction.triggered.connect(self._lowerSelectedButtons)
-        self.moveForwardAction.triggered.connect(self._moveSelectedButtonsUp)
-        self.moveBackwardAction.triggered.connect(self._moveSelectedButtonsDown)
-         
-    # ------------------------------------------------------------------
-    def _raiseSelectedButtons(self):
-        for but in self.selectedButtons:
-            but.raise_()
-        
-        
-    def _lowerSelectedButtons(self):
-        for but in self.selectedButtons:
-            but.lower()
-            
-    
-    def _moveSelectedButtonsUp(self):
-        buttons = self._getPickerButtons()
-        if len(buttons) <= 1 or not self.selectedButtons:
-            return
-        for but in reversed(self.selectedButtons):
-            index = buttons.index(but) 
-            if index == len(buttons) - 1: continue 
-            buttons[index], buttons[index + 1] = buttons[index + 1], buttons[index]
-        for but in buttons:
-            but.raise_()
-    
-    
-    def _moveSelectedButtonsDown(self):
-        buttons = self._getPickerButtons()
-        if len(buttons) <= 1 or not self.selectedButtons:
-            return
-        for but in self.selectedButtons:
-            index = buttons.index(but)
-            if index == 0: continue
-            buttons[index], buttons[index - 1] = buttons[index - 1], buttons[index]
-        for but in buttons:
-            but.raise_()
-            
     # ------------------------------------------------------------------
     def _getPickerButtons(self) -> list[pickerButton.PickerButton]:
         return [button for button in self.findChildren(pickerButton.PickerButton)]   
@@ -262,7 +196,6 @@ class PickerView(QtWidgets.QWidget):
         button.show()
         return button
         
-        
     def createButton(self):
         nodes = self.addOneButtonAction.data()
   
@@ -275,9 +208,9 @@ class PickerView(QtWidgets.QWidget):
     # ---------------------------------------------
     def updateAddingButtons(self, state=True):
         if state:
-            self.setCursor(QtGui.QCursor(':leftArrowPlus.png'))
+            #self.setCursor(QtGui.QCursor(config.greenCursorIcon))
+            self.setCursor(QtCore.Qt.CrossCursor)
         self.isAddingButtons = state
-        
         
     def createButtons(self):
         nodes = self.addManyButtonsAction.data()
@@ -328,15 +261,17 @@ class PickerView(QtWidgets.QWidget):
         self.sceneScale = 1.0
         self.origScale  = 1.0
         self.clickedParentPos = QtCore.QPointF()
-        self.buttonsParentPos = QtCore.QPointF()
+        self.buttonsParentPos = QtCore.QPointF(self.width() / 2, self.height() / 2)
         
         self.parentAxis.move(self.buttonsParentPos.toPoint())
         self.parentAxis.resize(100, 100) 
         
         for but in self._getPickerButtons():
-            but.resetPos()
-        print(f'origScale -> {self.origScale}', f'sceneScale -> {self.sceneScale}')
-    
+            globalPos = but.localPos + self.buttonsParentPos
+            but.resize(but.scaleX, but.scaleY)
+            but.move(globalPos.toPoint())
+            
+        self.viewOffset = self.buttonsParentPos - QtCore.QPointF(self.width() / 2, self.height() / 2)
     
     @staticmethod        
     def localToGlobal(localPos: QtCore.QPointF, 
@@ -349,6 +284,7 @@ class PickerView(QtWidgets.QWidget):
     def mousePressEvent(self, event): 
         # create buttons
         if self.isAddingButtons:
+            #self.setCursor(QtCore.Qt.ClosedHandCursor)
             self.buttonGlobalPos = event.localPos() # update button global pos
             self.createButtons()
             self._clearSelectedButtons()
@@ -376,7 +312,7 @@ class PickerView(QtWidgets.QWidget):
             self.pickerViewMenu.exec_(event.globalPos())
             return
             
-        # selected buttons and update Selection Box
+        # selected buttons and updare Selection Box
         if event.buttons() == QtCore.Qt.MouseButton.LeftButton and event.modifiers() != QtCore.Qt.ControlModifier:
             self.selected = True
             self.startPos = event.pos()
@@ -388,11 +324,8 @@ class PickerView(QtWidgets.QWidget):
             for button in self.pickerButtons:
                 if button.geometry().contains(self.startPos):
                     self.clickedButton = button
-                    '''
-                    Do not use 'break' to ensure the loop checks all buttons.
-                    This allows selecting the topmost button when multiple buttons overlap.
-                    #break
-                    '''              
+                    break
+                    
             if self.clickedButton is not None:
                 if event.modifiers() == QtCore.Qt.ShiftModifier:
                     if self.clickedButton not in self.selectedButtons:
@@ -413,16 +346,9 @@ class PickerView(QtWidgets.QWidget):
         if event.modifiers() == QtCore.Qt.ControlModifier and event.buttons() == QtCore.Qt.MouseButton.LeftButton:
             self.buttonsMoveTag = True
             localPos = event.localPos()
+
+            oneButton = next((but for but in self._getPickerButtons() if but.geometry().contains(localPos.toPoint())), None)
             
-            '''
-            Get the last button that contains the mouse position.
-            This ensures that when multiple buttons overlap, the topmost button is selected
-            instead of always selecting the bottommost button
-            # oneButton = next((but for but in self._getPickerButtons() if but.geometry().contains(localPos.toPoint())), None)
-            ''' 
-            _oneButton = [but for but in self._getPickerButtons() if but.geometry().contains(localPos.toPoint())]
-            oneButton  = _oneButton[-1] if _oneButton else None
-                
             if oneButton is not None and oneButton not in self.selectedButtons:
                 self._clearSelectedButtons()
                 self.selectedButtons = [oneButton]
@@ -457,6 +383,7 @@ class PickerView(QtWidgets.QWidget):
         # move view
         if self.MoveView:
             self.buttonsParentPos = self.clickedParentPos + (event.localPos() - self.clickedPos)
+            self.viewOffset = self.buttonsParentPos - QtCore.QPointF(self.width() / 2, self.height() / 2)  # 更新偏移量
             self.parentAxis.move(self.buttonsParentPos.toPoint())
             
             # move buttons
@@ -474,7 +401,8 @@ class PickerView(QtWidgets.QWidget):
             cx, cy = self.clickedPos.x(), self.clickedPos.y()
             self.buttonsParentPos = QtCore.QPointF(cx + _scale * (self.clickedParentPos.x() - cx), 
                                                    cy + _scale * (self.clickedParentPos.y() - cy))
-                                                   
+            
+            self.viewOffset = self.buttonsParentPos - QtCore.QPointF(self.width() / 2, self.height() / 2)
             self.parentAxis.move(self.buttonsParentPos.toPoint())
             self.parentAxis.resize(round(100 * self.sceneScale), round(100 * self.sceneScale)) 
             
@@ -485,17 +413,17 @@ class PickerView(QtWidgets.QWidget):
                 but.resize(round(but.scaleX * self.sceneScale), round(but.scaleY * self.sceneScale))
             return
             
-        # selected buttons and update Selection Box    
+        # selected buttons and updare Selection Box    
         if self.selected:
             self.endPos  = event.pos()
             self.clearMoveTag = True # clear tag
             self.selectionBox.setGeometry(QtCore.QRect(self.startPos, self.endPos).normalized()) # update selectionBox
             self.selectionBoxRect = QtCore.QRect(self.startPos, self.endPos)
-
+            
             if not (event.modifiers() & QtCore.Qt.AltModifier):
                 for button in self.pickerButtons:
                     inSelection = self.selectionBoxRect.intersects(button.geometry())
-
+                    
                     if event.modifiers() == QtCore.Qt.ShiftModifier:
                         if inSelection and button not in self.selectedButtons:
                             button.setSelected(True)
@@ -506,26 +434,13 @@ class PickerView(QtWidgets.QWidget):
                             self.selectedButtons.remove(button)
                             self.shiftAddButtons.remove(button)
                     elif inSelection:
-                        '''
-                        If the mouse click position is on a button
-                        check the Z-order of the clicked button and all selected buttons within the selection box to prevent selection from passing through
-                        '''
-                        if self.clickedButton is not None and self.clickedButton.geometry().contains(self.selectionBoxRect) and (
-                            self.pickerButtons.index(self.clickedButton) > self.pickerButtons.index(button)):
-                 
-                            self._clearSelectedButtons()
-                            self.clickedButton.setSelected(True)
-                            self.selectedButtons.append(self.clickedButton)      
-                            
-                        elif button not in self.selectedButtons:
+                        if button not in self.selectedButtons:
                             button.setSelected(True)
                             self.selectedButtons.append(button)
-        
                     else:
                         button.setSelected(False)
                         if button in self.selectedButtons:
                             self.selectedButtons.remove(button)
-
             return
             
         # move buttons
@@ -540,6 +455,7 @@ class PickerView(QtWidgets.QWidget):
             
 
     def mouseReleaseEvent(self, event):
+   
         # create buttons
         if self.isAddingButtons:
             self.updateAddingButtons(False)
@@ -559,7 +475,7 @@ class PickerView(QtWidgets.QWidget):
             self.origScale = self.sceneScale
             self.pickerButtons.clear()
             
-        # selected buttons and update Selection Box    
+        # selected buttons and updare Selection Box    
         if self.selected:
             self.selected = False
             self.shiftAddButtons = []
@@ -592,17 +508,29 @@ class PickerView(QtWidgets.QWidget):
         
         # ----------------------------------
         if self.selectedButtons:
-            '''
-            Get the last button from the list, emit a signal to the ToolBoxWidget
-            '''
             endBut = self.selectedButtons[-1]
             butInfo = [endBut.color, endBut.scaleX, endBut.scaleY, endBut.textColor, endBut.labelText]
             self.buttonSelected.emit(butInfo)
             
         super().mouseReleaseEvent(event)
         print(self.selectedButtons)
-        print(f'origScale -> {self.origScale}', f'sceneScale -> {self.sceneScale}')
+    
+    
+    def resizeEvent(self, event):
+
+        # 更新窗口中心点
+        newOrigPos = QtCore.QPointF(self.width() / 2, self.height() / 2)
+        # 使用偏移量计算新的axis位置
+        self.buttonsParentPos = newOrigPos + self.viewOffset
+        self.parentAxis.move(self.buttonsParentPos.toPoint())
         
+        # move buttons
+        for but in self._getPickerButtons():
+            globalPos = PickerView.localToGlobal(but.localPos, self.buttonsParentPos, self.sceneScale)
+            but.move(globalPos.toPoint())
+
+        super().resizeEvent(event)
+            
     # --------------------------------------------------------------------------------------------------------------------    
      
     @staticmethod
@@ -610,7 +538,7 @@ class PickerView(QtWidgets.QWidget):
         if not buttons or len(buttons) < 2:
             return
 
-        startButton = buttons[0]; endButton = buttons[-1]
+        startButton = buttons[0]; endButton   = buttons[-1]
         
         if alignType == 'horizontal':
             firstCenter   = startButton.pos().y() + startButton.height() / 2
@@ -634,110 +562,26 @@ class PickerView(QtWidgets.QWidget):
                 
                 
     # -------------------------------------------------------------------------------------------------------------------- 
-    '''
-    def _getButtonsBoundingBox(self):
-        buttons = self.selectedButtons or self._getPickerButtons()
+    def getButtonsBoundingBox(self):
+        buttons = self._getPickerButtons()
         if not buttons:
-            return None
+            return 
         minX = min(button.pos().x() for button in buttons)
         minY = min(button.pos().y() for button in buttons)
         maxX = max(button.pos().x() + button.width() for button in buttons)
         maxY = max(button.pos().y() + button.height() for button in buttons)
 
         return QtCore.QRectF(minX, minY, maxX - minX, maxY - minY)
-    '''    
-    def _getButtonsBoundingBox(self):
-        buttons = self.selectedButtons or self._getPickerButtons()
-        if not buttons:
-            return None
-
-        boundingBox = QtCore.QRectF()
-
-        for button in buttons:
-            '''
-            https://doc.qt.io/qtforpython-5/PySide2/QtCore/QRectF.html#PySide2.QtCore.PySide2.QtCore.QRectF.united
-            '''
-            buttonRect = QtCore.QRectF(button.pos(), button.size())
-            boundingBox = boundingBox.united(buttonRect)
-
-        return boundingBox
         
-    def frameButtonsInView(self):
-        boundingBox = self._getButtonsBoundingBox()
-        if boundingBox is None:
-            return
+    def fitButtonsToView(self):
+        boundingBox = self.getButtonsBoundingBox()
+        print(boundingBox)
+  
 
-        _viewRect  = self.geometry()
-        viewCenter = QtCore.QPointF(_viewRect.width() / 2.0, _viewRect.height() / 2.0)
-
-        boundingBoxCenter = boundingBox.center()
-
-        scale = min(_viewRect.width() / boundingBox.width(), _viewRect.height() / boundingBox.height())
-        self.sceneScale = self.origScale * scale
-
-        
-        localPos = (viewCenter - (boundingBoxCenter - self.buttonsParentPos) - viewCenter) * scale
-        self.buttonsParentPos = viewCenter + localPos
-
-        self.parentAxis.move(self.buttonsParentPos.toPoint())
-        self.parentAxis.resize(round(100 * self.sceneScale), round(100 * self.sceneScale))
-
-
-        for but in self._getPickerButtons():
-            globalPos = PickerView.localToGlobal(but.localPos, self.buttonsParentPos, self.sceneScale)
-            but.move(globalPos.toPoint())
-            but.resize(round(but.scaleX * self.sceneScale), round(but.scaleY * self.sceneScale))
-
-        self.origScale = self.sceneScale
-        print(f'origScale -> {self.origScale}', f'sceneScale -> {self.sceneScale}')
-
-    '''
-    def frameButtonsInView(self):
-        boundingBox = self._getButtonsBoundingBox()
- 
-        if boundingBox is None:
-            return
-        # ----------------------------------------------------------------
-        # get boundingBox center
-        boundingBoxCenter: QtCore.QPointF = boundingBox.center()
-        
-        # get main UI center
-        _viewRect  = self.geometry()
-        viewCenter = QtCore.QPointF(_viewRect.width() / 2.0, _viewRect.height() / 2.0) 
-
-        
-        # move buttons parent pos
-        #self.buttonsParentPos += (viewCenter - boundingBoxCenter)
-        self.buttonsParentPos = viewCenter - (boundingBoxCenter - self.buttonsParentPos)
-        self.parentAxis.move(self.buttonsParentPos.toPoint())
-        
-        for but in self._getPickerButtons():
-            globalPos = PickerView.localToGlobal(but.localPos, self.buttonsParentPos, self.sceneScale)
-            but.move(globalPos.toPoint())
-        
-        # scale
-        scale = min(_viewRect.width() / boundingBox.width(), _viewRect.height() / boundingBox.height())
-        print(scale)
-        self.sceneScale = self.origScale * scale
-        
-        localPos = (self.buttonsParentPos - viewCenter) * scale
-
-        self.buttonsParentPos = viewCenter + localPos
-        self.parentAxis.move(self.buttonsParentPos.toPoint())
-        self.parentAxis.resize(round(100 * self.sceneScale), round(100 * self.sceneScale)) 
-        
-        for but in self._getPickerButtons():
-            globalPos = PickerView.localToGlobal(but.localPos, self.buttonsParentPos, self.sceneScale)
-            but.move(globalPos.toPoint())
-            but.resize(round(but.scaleX * self.sceneScale), round(but.scaleY * self.sceneScale))
-            
-        self.origScale = self.sceneScale  
-        print(f'origScale -> {self.origScale}', f'sceneScale -> {self.sceneScale}')
-    '''
 if __name__ =='__main__':
     UI = QtWidgets.QDialog(parent=qtUtils.getMayaMainWindow())
     UI.setWindowFlags(QtCore.Qt.WindowType.Window)
-    UI.resize(500, 650)
+    UI.resize(600, 700)
     layout = QtWidgets.QVBoxLayout(UI)
     layout.addWidget(PickerView())
     UI.show()

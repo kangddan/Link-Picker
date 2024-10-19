@@ -29,7 +29,7 @@ class NullWidget(QtWidgets.QWidget):
         self.iconLabel = QtWidgets.QLabel()
         self.iconLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.iconLabel.setWordWrap(True)
-        self.iconLabel.setText("<img src=':home.png'><h4>Create a new picker tab to get started</h4>")
+        self.iconLabel.setText("<img src=':np-head.png'><h4>Create a new picker tab to get started</h4>")
         #path = r'C:\Users\kangddan\Documents\maya\2024\scripts\linkPicker\link.png'
         #self.iconLabel.setText(f"<img src={path}><h4>Create a new picker tab to get started</h4>")
         
@@ -397,6 +397,58 @@ class NumberLineEdit(QtWidgets.QLineEdit):
             
         self._storedValue = self._valueCheck(value)
         self.setText(self._formatDisplayValue(self._storedValue))
+        
+        
+class SelectionBox(QtWidgets.QRubberBand):
+    def __init__(self, parent=None, shape=QtWidgets.QRubberBand.Line):
+        super().__init__(shape, parent)
+        
+    def paintEvent(self, event):
+        painter = QtGui.QPainter(self)
+        painter.setPen(QtGui.QPen(QtGui.QColor(150, 150, 150), 4, QtCore.Qt.SolidLine))
+        painter.setBrush(QtGui.QColor(100, 100, 100, 50))
+        painter.drawRect(self.rect())
+        
+        
+class AxisWidget(QtWidgets.QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.resize(100, 100)
+        self.createWidgets()
+        
+    def createWidgets(self):
+        self.axisLabel = QtWidgets.QLabel(self)
+        self.axisLabel.setText('(0.000, 0.000)')
+        self.axisLabel.move(10, 10)
+        
+    def reset(self):
+        self.move(QtCore.QPoint(0, 0))
+        self.resize(100, 100)
+
+    def paintEvent(self, event):
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)  
+        painter.setPen(QtGui.QPen(QtCore.Qt.red, self.width() / 20))
+        painter.drawLine(0, 0, self.width(), 0)
+        painter.setPen(QtGui.QPen(QtCore.Qt.green, self.height() / 20))
+        painter.drawLine(0, 0, 0, self.height())
+        painter.end()
+  
+        self.axisLabel.setText(f'({self.pos().x()}, {self.pos().y()})')
+        
+class CustomDelegate(QtWidgets.QStyledItemDelegate):
+    def __init__(self, parent=None, itemHeight=30):
+        super().__init__(parent)
+        self.itemHeight = itemHeight
+
+    def sizeHint(self, option, index):
+        size = super().sizeHint(option, index)
+        size.setHeight(self.itemHeight)
+        return size    
+        
+    def paint(self, painter, option, index):
+        painter.fillRect(option.rect, QtGui.QColor(82, 82, 82)) 
+        super().paint(painter, option, index)
 
         
         

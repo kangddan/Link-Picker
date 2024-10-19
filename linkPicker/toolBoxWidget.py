@@ -26,15 +26,15 @@ class ToolBoxWidget(QtWidgets.QWidget):
 
         
     def _createWidgets(self):
-        self.colorLabel           = QtWidgets.QLabel('<span style="font-size: 15px; font-weight: 400;">Color</span>')
+        self.colorLabel           = QtWidgets.QLabel('<span style="font-size: 15px; font-weight: 400;">Color:</span>')
         self.buttonColorLabel     = colorWidget.ColorWidget(34, 24, QtGui.QColor(QtCore.Qt.yellow))
-        self.widthLabel           = QtWidgets.QLabel('<span style="font-size: 15px; font-weight: 400;">Width</span>')
+        self.widthLabel           = QtWidgets.QLabel('<span style="font-size: 15px; font-weight: 400;">Width:</span>')
         self.widthNumberLineEdit  = widgets.NumberLineEdit('int', 40, 1, 10, 400)
 
-        self.heightLabel          = QtWidgets.QLabel('<span style="font-size: 15px; font-weight: 400;">Height</span>')
+        self.heightLabel          = QtWidgets.QLabel('<span style="font-size: 15px; font-weight: 400;">Height:</span>')
         self.heightNumberLineEdit = widgets.NumberLineEdit('int', 40, 1, 10, 400)
 
-        self.buttonLabel         = QtWidgets.QLabel('<span style="font-size: 15px; font-weight: 400;">Label</span>')
+        self.buttonLabel         = QtWidgets.QLabel('<span style="font-size: 15px; font-weight: 400;">Label:</span>')
         self.labelTextColor      = colorWidget.ColorWidget(34, 24, QtGui.QColor(QtCore.Qt.black))
         self.labelLineEdit       = QtWidgets.QLineEdit()
         self.labelLineEdit.setPlaceholderText('name...')
