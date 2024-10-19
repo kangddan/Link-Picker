@@ -33,8 +33,9 @@ class PickerView(QtWidgets.QWidget):
         self.sceneScale = 1.0
         self.origScale  = 1.0
         
-        self.MoveView  = False
-        self.scaleView = False
+        self.frameMoveTag = True
+        self.MoveView     = False
+        self.scaleView    = False
 
         self.clickedParentPos = QtCore.QPointF()
         self.buttonsParentPos = QtCore.QPointF()
@@ -335,7 +336,7 @@ class PickerView(QtWidgets.QWidget):
         
         for but in self._getPickerButtons():
             but.resetPos()
-        print(f'origScale -> {self.origScale}', f'sceneScale -> {self.sceneScale}')
+        #print(f'origScale -> {self.origScale}', f'sceneScale -> {self.sceneScale}')
     
     
     @staticmethod        
@@ -449,6 +450,7 @@ class PickerView(QtWidgets.QWidget):
         
     def mouseMoveEvent(self, event):
         self.update()
+        #self.frameMoveTag = True
         # create buttons
         if self.isAddingButtons and self.trackedButtons:
             self._updateButtonPositions(self.buttonGlobalPos, event.localPos())
@@ -456,6 +458,7 @@ class PickerView(QtWidgets.QWidget):
             
         # move view
         if self.MoveView:
+            self.frameMoveTag = True
             self.buttonsParentPos = self.clickedParentPos + (event.localPos() - self.clickedPos)
             self.parentAxis.move(self.buttonsParentPos.toPoint())
             
@@ -467,6 +470,7 @@ class PickerView(QtWidgets.QWidget):
             
         # scale view
         if self.scaleView:
+            self.frameMoveTag = True
             offset = event.localPos() - self.clickedPos
             self.sceneScale = max(0.20, min(self.origScale + (offset.x() + offset.y()) / 200.0, 10.00)) # update scale
             
@@ -601,7 +605,7 @@ class PickerView(QtWidgets.QWidget):
             
         super().mouseReleaseEvent(event)
         print(self.selectedButtons)
-        print(f'origScale -> {self.origScale}', f'sceneScale -> {self.sceneScale}')
+        #print(f'origScale -> {self.origScale}', f'sceneScale -> {self.sceneScale}')
         
     # --------------------------------------------------------------------------------------------------------------------    
      
@@ -633,19 +637,7 @@ class PickerView(QtWidgets.QWidget):
                 button.updateLocalPos(globalPos, parentPos, sceneScale)
                 
                 
-    # -------------------------------------------------------------------------------------------------------------------- 
-    '''
-    def _getButtonsBoundingBox(self):
-        buttons = self.selectedButtons or self._getPickerButtons()
-        if not buttons:
-            return None
-        minX = min(button.pos().x() for button in buttons)
-        minY = min(button.pos().y() for button in buttons)
-        maxX = max(button.pos().x() + button.width() for button in buttons)
-        maxY = max(button.pos().y() + button.height() for button in buttons)
-
-        return QtCore.QRectF(minX, minY, maxX - minX, maxY - minY)
-    '''    
+    # --------------------------------------------------------------------------------------------------------------------  
     def _getButtonsBoundingBox(self):
         buttons = self.selectedButtons or self._getPickerButtons()
         if not buttons:
@@ -663,77 +655,46 @@ class PickerView(QtWidgets.QWidget):
         return boundingBox
         
     def frameButtonsInView(self):
+        THRESHOLD = 0.05
+        
         boundingBox = self._getButtonsBoundingBox()
         if boundingBox is None:
             return
-
         _viewRect  = self.geometry()
-        viewCenter = QtCore.QPointF(_viewRect.width() / 2.0, _viewRect.height() / 2.0)
-
-        boundingBoxCenter = boundingBox.center()
-
-        scale = min(_viewRect.width() / boundingBox.width(), _viewRect.height() / boundingBox.height())
-        self.sceneScale = self.origScale * scale
-
         
-        localPos = (viewCenter - (boundingBoxCenter - self.buttonsParentPos) - viewCenter) * scale
-        self.buttonsParentPos = viewCenter + localPos
-
+        # get scale
+        scale = min(_viewRect.width() / boundingBox.width(), _viewRect.height() / boundingBox.height())
+        '''
+        Due to the sufficiently large threshold
+        it is necessary to check whether to pan the view, so that the view can still be refreshed after panning!!
+        '''
+        if abs(scale * self.sceneScale - self.origScale) > THRESHOLD or self.frameMoveTag:
+            self.sceneScale = self.origScale * scale
+        else:
+            return
+        
+        # move to view center
+        boundingBoxCenter = boundingBox.center()
+        viewCenter = QtCore.QPointF(_viewRect.width() / 2.0, _viewRect.height() / 2.0)
+        
+        localPos = (self.buttonsParentPos + (viewCenter - boundingBoxCenter) - viewCenter) * scale
+        newButtonsParentPos = viewCenter + localPos
+        if abs(newButtonsParentPos.x() - self.buttonsParentPos.x()) > THRESHOLD or abs(newButtonsParentPos.y() - self.buttonsParentPos.y()) > THRESHOLD:
+            self.buttonsParentPos = newButtonsParentPos
+    
         self.parentAxis.move(self.buttonsParentPos.toPoint())
         self.parentAxis.resize(round(100 * self.sceneScale), round(100 * self.sceneScale))
 
-
+        # update buttons pos and scale
         for but in self._getPickerButtons():
             globalPos = PickerView.localToGlobal(but.localPos, self.buttonsParentPos, self.sceneScale)
             but.move(globalPos.toPoint())
             but.resize(round(but.scaleX * self.sceneScale), round(but.scaleY * self.sceneScale))
 
         self.origScale = self.sceneScale
-        print(f'origScale -> {self.origScale}', f'sceneScale -> {self.sceneScale}')
+        self.frameMoveTag = False
+        #print(f'origScale -> {self.origScale}', f'sceneScale -> {self.sceneScale}')
 
-    '''
-    def frameButtonsInView(self):
-        boundingBox = self._getButtonsBoundingBox()
- 
-        if boundingBox is None:
-            return
-        # ----------------------------------------------------------------
-        # get boundingBox center
-        boundingBoxCenter: QtCore.QPointF = boundingBox.center()
-        
-        # get main UI center
-        _viewRect  = self.geometry()
-        viewCenter = QtCore.QPointF(_viewRect.width() / 2.0, _viewRect.height() / 2.0) 
-
-        
-        # move buttons parent pos
-        #self.buttonsParentPos += (viewCenter - boundingBoxCenter)
-        self.buttonsParentPos = viewCenter - (boundingBoxCenter - self.buttonsParentPos)
-        self.parentAxis.move(self.buttonsParentPos.toPoint())
-        
-        for but in self._getPickerButtons():
-            globalPos = PickerView.localToGlobal(but.localPos, self.buttonsParentPos, self.sceneScale)
-            but.move(globalPos.toPoint())
-        
-        # scale
-        scale = min(_viewRect.width() / boundingBox.width(), _viewRect.height() / boundingBox.height())
-        print(scale)
-        self.sceneScale = self.origScale * scale
-        
-        localPos = (self.buttonsParentPos - viewCenter) * scale
-
-        self.buttonsParentPos = viewCenter + localPos
-        self.parentAxis.move(self.buttonsParentPos.toPoint())
-        self.parentAxis.resize(round(100 * self.sceneScale), round(100 * self.sceneScale)) 
-        
-        for but in self._getPickerButtons():
-            globalPos = PickerView.localToGlobal(but.localPos, self.buttonsParentPos, self.sceneScale)
-            but.move(globalPos.toPoint())
-            but.resize(round(but.scaleX * self.sceneScale), round(but.scaleY * self.sceneScale))
-            
-        self.origScale = self.sceneScale  
-        print(f'origScale -> {self.origScale}', f'sceneScale -> {self.sceneScale}')
-    '''
 if __name__ =='__main__':
     UI = QtWidgets.QDialog(parent=qtUtils.getMayaMainWindow())
     UI.setWindowFlags(QtCore.Qt.WindowType.Window)
