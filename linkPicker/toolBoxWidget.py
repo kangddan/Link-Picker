@@ -27,7 +27,7 @@ class ToolBoxWidget(QtWidgets.QWidget):
         
     def _createWidgets(self):
         self.colorLabel           = QtWidgets.QLabel('<span style="font-size: 15px; font-weight: 400;">Color:</span>')
-        self.buttonColorLabel     = colorWidget.ColorWidget(34, 24, QtGui.QColor(QtCore.Qt.yellow))
+        self.buttonColorLabel     = colorWidget.ColorWidget(34, 24, QtGui.QColor(QtGui.QColor(214, 208, 0)))
         self.widthLabel           = QtWidgets.QLabel('<span style="font-size: 15px; font-weight: 400;">Width:</span>')
         self.widthNumberLineEdit  = widgets.NumberLineEdit('int', 40, 1, 10, 400)
 

@@ -200,8 +200,8 @@ class ColorWidget(QtWidgets.QLabel):
         
         
     def _createConnections(self):
-        self.RGBAction.triggered.connect(lambda: self._setColorMode(True))
-        self.indexAction.triggered.connect(lambda: self._setColorMode(False))
+        self.RGBAction.triggered.connect(partial(self._setColorMode, True))
+        self.indexAction.triggered.connect(partial(self._setColorMode, False))
         
         self.cmdsColorUI.mayaRGBToQtColor2.connect(self.updateColor)
         self.indexColorPicker.mayaIndexToQtColor.connect(self.updateColor)

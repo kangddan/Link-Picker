@@ -12,6 +12,10 @@ class PickerButton(QtWidgets.QWidget):
         #return f'< Buttton: globalPos: ({self.pos().x()}, {self.pos().y()}), localPos: ({self.localPos.x()}, {self.localPos.y()})>'
         #return f'<Buttton: local: ({self.localPos.x()}, {self.localPos.y()})>'
         return f'<Buttton: {self.labelText}>'
+        
+    def __str__(self):
+        return str('kangddan')
+        
     def __init__(self, globalPos : QtCore.QPointF, 
                        parentPos : QtCore.QPointF, 
                        color     : QtGui.QColor = QtGui.QColor(100, 100, 100),
@@ -65,6 +69,7 @@ class PickerButton(QtWidgets.QWidget):
         self._createLayouts()
         self.updateLabelText(self.labelText)
         self.updateLabelColor(self.textColor)
+        self.setToolTip(str(self))
         
     # ---------------------------------------------------------------------------------
     def _createWidgets(self):
@@ -122,58 +127,35 @@ class PickerButton(QtWidgets.QWidget):
         self.update()
         
     # ----------------------------------------------------------------------------    
-    # def updateScaleX(self, scaleX: int, sceneScale: float, parentPos: QtCore.QPointF) -> None:
-        
-    #     if scaleX == self.scaleX:
-    #         return
- 
-
-    #     self.scaleX = scaleX
-    #     _scaleX = round(self.scaleX * sceneScale)
-    #     _scaleY = round(self.scaleY * sceneScale)
-        
-
-    #     midX = self.x() + self.width() / 2 - (_scaleX / 2)
-    #     midY = self.y() + self.height() / 2 - (_scaleY / 2)
-        
-
-    #     globalPos = QtCore.QPointF(midX, midY)
-        
-
-    #     self.resize(_scaleX, _scaleY)
-        
-
-    #     self.move(globalPos.toPoint())
-        
-
-    #     self.updateLocalPos(globalPos, parentPos, sceneScale)
-        
-    # def _updateScaleX(self, scaleX: int, sceneScale: float, parentPos: QtCore.QPointF) -> None:
-    #     if scaleX == self.scaleX:
-    #         return
-
-    #     self.scaleX = scaleX
-    #     newWidth = round(self.scaleX * sceneScale)
-    #     deltaX = (newWidth - self.width()) / 2  
-    #     self.resize(newWidth, self.height()) 
-        
-
-    #     newGlobalPos = self.pos() - QtCore.QPoint(deltaX, 0) 
-    #     self.move(newGlobalPos)
-        
-    #     self.updateLocalPos(QtCore.QPointF(newGlobalPos), parentPos, sceneScale)
-    
-    def updateScaleX(self, scaleX: int, sceneScale: float, parentPos: QtCore.QPointF) -> None:
+    def updateScaleX(self, scaleX: int, sceneScale: float, parentPos: QtCore.QPointF) -> None:  
         if scaleX == self.scaleX:
             return
-        self.scaleX  = scaleX
-        self.resize(round(self.scaleX * sceneScale), round(self.scaleY * sceneScale))
+ 
+        self.scaleX = scaleX
+        self._scale(sceneScale, parentPos)
         
+
     def updateScaleY(self, scaleY: int, sceneScale: float, parentPos: QtCore.QPointF) -> None:
         if scaleY == self.scaleY:
             return
-        self.scaleY  = scaleY
-        self.resize(round(self.scaleX * sceneScale), round(self.scaleY * sceneScale))
+ 
+        self.scaleY = scaleY
+        self._scale(sceneScale, parentPos)
+    
+    
+    def _scale(self, sceneScale: float, parentPos: QtCore.QPointF) -> None:
+        newWidth  = round(self.scaleX * sceneScale)
+        newHeight = round(self.scaleY * sceneScale)
+        
+        globalPos = (self.localPos * sceneScale) + parentPos
+        
+        oldCenter = globalPos + QtCore.QPointF(self.width() / 2, self.height() / 2)
+        self.resize(newWidth, newHeight)
+        newCenter = globalPos + QtCore.QPointF(self.width() / 2, self.height() / 2)
+        
+        newPosition = globalPos + (oldCenter - newCenter)
+        self.move(newPosition.toPoint())
+        self.updateLocalPos(newPosition, parentPos, sceneScale)
         
 
     # ----------------------------------------------------------------------------       

@@ -5,6 +5,7 @@ from PySide2 import QtGui
 from PySide2 import QtCore
 
 
+
 class NullWidget(QtWidgets.QWidget):
     clicked = QtCore.Signal()
 
@@ -88,7 +89,7 @@ class MyTabWidget(QtWidgets.QTabWidget):
         self.iconLabel = QtWidgets.QLabel('+')
         self.iconLabel.setFont(QtGui.QFont('Arial', 8, QtGui.QFont.Bold) )
         self.tabBar.setTabButton(self.addTab(self.nullWidget, ''), QtWidgets.QTabBar.RightSide, self.iconLabel)
-       
+        #self.iconLabel.installEventFilter(self)
         #self.tabBar.setTabButton(self.addTab(self.nullWidget, '+'), QtWidgets.QTabBar.RightSide, None) # add base tab
         
         
@@ -123,87 +124,97 @@ class MyTabWidget(QtWidgets.QTabWidget):
 
 
     def eventFilter(self, obj, event):
-        if obj != self.tabBar:
-            return super().eventFilter(obj, event)
-            
-        if event.type() == QtCore.QEvent.Wheel:
-            '''
-            Skip switching to the last tab (e.g., the "add tab" button)
-            '''
-            currentIndex = self.currentIndex()
-            index = currentIndex - 1 if event.angleDelta().y() > 0 else currentIndex + 1
-            if index == self.count() - 1:
-                return True
-            return False
-                   
-        if event.type() in [QtCore.QEvent.MouseButtonPress, QtCore.QEvent.MouseButtonDblClick]:
-            button = event.button()
+        if obj == self.tabBar:
+            if event.type() == QtCore.QEvent.Wheel:
+                '''
+                Skip switching to the last tab (e.g., the "add tab" button)
+                '''
+                currentIndex = self.currentIndex()
+                index = currentIndex - 1 if event.angleDelta().y() > 0 else currentIndex + 1
+                if index == self.count() - 1:
+                    return True
+                return False
+                       
+            if event.type() in [QtCore.QEvent.MouseButtonPress, QtCore.QEvent.MouseButtonDblClick]:
+                button = event.button()
 
-            if button in [QtCore.Qt.LeftButton, QtCore.Qt.MiddleButton, QtCore.Qt.RightButton]:
-                '''
-                All three types of mouse buttons can trigger the addTableMenu
-                '''
-                if self.tabBar.tabAt(event.pos()) == self.count() - 1:
-                    self.addTableMenu.exec_(event.globalPos())
-                    return True
-                
-                elif button == QtCore.Qt.RightButton and event.buttons() == QtCore.Qt.RightButton:
-                    self.MouseRightandMid  = True
-                    self.closeOthersAction.setData(self.tabBar.tabAt(event.pos())) # get tag index
-                    self.TableMenu.exec_(event.globalPos())
-                    return True
-                
+                if button in [QtCore.Qt.LeftButton, QtCore.Qt.MiddleButton, QtCore.Qt.RightButton]:
+                    '''
+                    All three types of mouse buttons can trigger the addTableMenu
+                    '''
+                    if self.tabBar.tabAt(event.pos()) == self.count() - 1:
+                        self.addTableMenu.exec_(event.globalPos())
+                        return True
                     
-                elif button == QtCore.Qt.MiddleButton and event.buttons() == QtCore.Qt.MiddleButton:
-                    '''
+                    elif button == QtCore.Qt.RightButton and event.buttons() == QtCore.Qt.RightButton:
+                        self.MouseRightandMid  = True
+                        self.closeOthersAction.setData(self.tabBar.tabAt(event.pos())) # get tag index
+                        self.TableMenu.exec_(event.globalPos())
+                        return True
+                    
+                        
+                    elif button == QtCore.Qt.MiddleButton and event.buttons() == QtCore.Qt.MiddleButton:
+                        '''
+                        self.MouseRightandMid  = True
+                        self.isMovingTab       = False
+                        self.hasMoved          = False
+                        '''
+                        self.MouseRightandMid  = True
+                        self.closeOthersAction.setData(self.tabBar.tabAt(event.pos())) # get tag index
+                        self.TableMenu.exec_(event.globalPos())
+                        return True
+                    
+                    elif button == QtCore.Qt.RightButton:
+                   
+                        '''
+                        Ignore to prevent middle/right mouse button from triggering tabBarDoubleClicked
+                        Track middle/right button state and reset movement flags
+                        '''
+                        self.MouseRightandMid  = True
+                        self.isMovingTab       = False
+                        self.hasMoved          = False
+                        return True              
+                    
+                if button == QtCore.Qt.LeftButton:
                     self.MouseRightandMid  = True
-                    self.isMovingTab       = False
-                    self.hasMoved          = False
-                    '''
-                    self.MouseRightandMid  = True
-                    self.closeOthersAction.setData(self.tabBar.tabAt(event.pos())) # get tag index
-                    self.TableMenu.exec_(event.globalPos())
-                    return True
-                
-                elif button == QtCore.Qt.RightButton:
-               
-                    '''
-                    Ignore to prevent middle/right mouse button from triggering tabBarDoubleClicked
-                    Track middle/right button state and reset movement flags
-                    '''
-                    self.MouseRightandMid  = True
-                    self.isMovingTab       = False
-                    self.hasMoved          = False
-                    return True              
-                
-            if button == QtCore.Qt.LeftButton:
-                self.MouseRightandMid  = True
-                self.isMovingTab = True
-                self.hasMoved    = False
-                return False 
+                    self.isMovingTab = True
+                    self.hasMoved    = False
+                    return False 
 
-        elif event.type() == QtCore.QEvent.MouseMove and self.MouseRightandMid  and not self.hasMoved:
-            # vis end tab
-            self.setTabVisible(self.count() - 1, False)
-            self.hasMoved = True
-            return False
+            elif event.type() == QtCore.QEvent.MouseMove and self.MouseRightandMid  and not self.hasMoved:
+                # vis end tab
+                self.setTabVisible(self.count() - 1, False)
+                self.hasMoved = True
+                return False
 
-        elif event.type() == QtCore.QEvent.MouseButtonRelease and event.button() == QtCore.Qt.LeftButton:
-            if self.hasMoved or self.MouseRightandMid:
-                #vis end tab
-                #If the interval is too slow, quickly dragging the tab may cause 'New Tab' to appear in the wrong position £¡£¡
-                self.showTabTimer.start(250)
-            
-            if not isinstance(self.widget(self.count() - 1), NullWidget):
-                nullWidgetIndex = self.indexOf(self.nullWidget)
-                self.tabBar.moveTab(nullWidgetIndex, self.count() - 1)
-            # ----------------------------------------------------------------------------
-            
-            self.isMovingTab      = False
-            self.MouseRightandMid = False
-            self.hasMoved         = False
+            elif event.type() == QtCore.QEvent.MouseButtonRelease and event.button() == QtCore.Qt.LeftButton:
+                if self.hasMoved or self.MouseRightandMid:
+                    #vis end tab
+                    #If the interval is too slow, quickly dragging the tab may cause 'New Tab' to appear in the wrong position £¡£¡
+                    self.showTabTimer.start(250)
+                
+                if not isinstance(self.widget(self.count() - 1), NullWidget):
+                    nullWidgetIndex = self.indexOf(self.nullWidget)
+                    self.tabBar.moveTab(nullWidgetIndex, self.count() - 1)
+                # ----------------------------------------------------------------------------
+                
+                self.isMovingTab      = False
+                self.MouseRightandMid = False
+                self.hasMoved         = False
+                return False
             return False
-        return False
+            
+        elif isinstance(obj, QtWidgets.QAbstractButton):
+            if event.type() == QtCore.QEvent.Enter:
+                obj.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
+                return False
+            elif event.type() == QtCore.QEvent.Leave:
+                obj.setCursor(QtGui.QCursor(QtCore.Qt.ArrowCursor))
+                return False
+            return False
+            
+        else:
+            return super().eventFilter(obj, event)
 
 
     def _showAddTab(self):
@@ -214,6 +225,11 @@ class MyTabWidget(QtWidgets.QTabWidget):
     def addNewTab(self, widget) -> int:
         tabName: str = self._getNextName()
         index:   int = self.insertTab(self.count() - 1, widget, tabName)
+        
+        # get close button
+        closeButton = self.tabBar.tabButton(index, QtWidgets.QTabBar.RightSide)
+        if isinstance(closeButton, QtWidgets.QAbstractButton):
+            closeButton.installEventFilter(self)
         return index
         
           
@@ -350,11 +366,11 @@ class NumberLineEdit(QtWidgets.QLineEdit):
         
     def _formatDisplayValue(self, value):
         if self._dataType == 'float':
-            return f"{value:.3f}"
+            return f'{value:.3f}'
         return str(value)
         
     def mousePressEvent(self, event):
-        if (event.button() == QtCore.Qt.MiddleButton and 
+        if (event.buttons() == QtCore.Qt.MiddleButton and 
            QtWidgets.QApplication.keyboardModifiers() == QtCore.Qt.ControlModifier):
             
             self.dragging = True
@@ -362,6 +378,13 @@ class NumberLineEdit(QtWidgets.QLineEdit):
             self.clearFocus() 
             self.setCursor(QtCore.Qt.SizeHorCursor)
         else:
+            '''
+            If any other mouse button is clicked during the middle-button dragging process
+            immediately stop the dragging logic
+            '''
+            if self.dragging:
+                self.dragging = False 
+                self.setCursor(QtCore.Qt.IBeamCursor)
             super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
@@ -449,6 +472,4 @@ class CustomDelegate(QtWidgets.QStyledItemDelegate):
     def paint(self, painter, option, index):
         painter.fillRect(option.rect, QtGui.QColor(82, 82, 82)) 
         super().paint(painter, option, index)
-
-        
-        
+    

@@ -1,5 +1,6 @@
 import sys
 import importlib
+
 from PySide2 import QtWidgets, QtGui, QtCore
 from linkPicker import qtUtils, widgets, pickerView, colorWidget, toolBoxWidget, config
 importlib.reload(pickerView)
@@ -48,6 +49,11 @@ class MainUI(QtWidgets.QDialog):
             cls._INSTANCE = super().__new__(cls) 
         return cls._INSTANCE
         
+    def resizeEvent(self, event):
+        width = self.width()
+        self.namespaceWidget.show() if width > 400 and self.tabWidget.count() >= 2 else self.namespaceWidget.hide()
+        super().resizeEvent(event)
+        
     def __repr__(self):
         return f'< PickerWindow{self.__class__.__name__} Tab -> {self.tabWidget.count()} >'
         
@@ -74,7 +80,7 @@ class MainUI(QtWidgets.QDialog):
         self.fileMenu    = QtWidgets.QMenu('File',   self.mainMenuBar) 
         self.editMenu    = QtWidgets.QMenu('Edit',   self.mainMenuBar)
         self.pickerMenu  = QtWidgets.QMenu('Picker', self.mainMenuBar)
-        self.pickerMenu.setEnabled(False)
+        #self.pickerMenu.setEnabled(False)
         
         self.helpMenu    = QtWidgets.QMenu('Help',   self.mainMenuBar)
         self.fileMenu.setTearOffEnabled(True)
@@ -216,7 +222,7 @@ class MainUI(QtWidgets.QDialog):
         self.quitPickerAction.triggered.connect(self.close)
         self.newAction.triggered.connect(self.tabWidget.newTab.emit)
         self.closeAction.triggered.connect(lambda: self.tabWidget._closeTab(self.tabWidget.currentIndex()))
-        self.closeAllAction.triggered.connect(lambda: self.tabWidget._closeAllTab())
+        self.closeAllAction.triggered.connect(self.tabWidget._closeAllTab)
         self.renameTabAction.triggered.connect(lambda: self.tabWidget._renameTab(self.tabWidget.currentIndex()))
         
         self.ToolAction.triggered.connect(lambda: self.toolBoxWidget.hide() if self.toolBoxWidget.isVisible() else self.toolBoxWidget.show())
